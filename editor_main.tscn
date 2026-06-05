@@ -1,0 +1,343 @@
+[gd_scene format=3 uid="uid://bg2cwxjekq2pw"]
+
+[ext_resource type="Script" uid="uid://bflka4erlllk" path="res://editor_main.gd" id="1_st2if"]
+[ext_resource type="Script" uid="uid://dphr2lfc0bvuy" path="res://notes_edit_panel.gd" id="2_6p0iu"]
+[ext_resource type="Script" uid="uid://3d7jetebgpy" path="res://effects_edit_panel.gd" id="3_0rrwi"]
+[ext_resource type="Script" uid="uid://bs2irqkpflc41" path="res://texture_edit_panel.gd" id="4_efgq6"]
+[ext_resource type="Script" uid="uid://cutyvxp58yq6k" path="res://shader_edit_panel.gd" id="5_7ead7"]
+[ext_resource type="Theme" uid="uid://c8theme001" path="res://res/fonts/editor_theme.tres" id="6_theme"]
+
+[node name="EditorMain" type="Node2D" unique_id=1109177016]
+theme = ExtResource("6_theme")
+script = ExtResource("1_st2if")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=5261916]
+
+[node name="SaveButton" type="Button" parent="CanvasLayer" unique_id=60438235]
+offset_right = 40.0
+offset_bottom = 31.0
+text = "保存"
+
+[node name="PreviewButton" type="Button" parent="CanvasLayer" unique_id=297549612]
+offset_left = 40.0
+offset_right = 80.0
+offset_bottom = 31.0
+text = "预览"
+
+[node name="ReturnButton" type="Button" parent="CanvasLayer" unique_id=2028124539]
+offset_left = 80.0
+offset_right = 152.0
+offset_bottom = 31.0
+text = "返回主页"
+
+[node name="FilePathLabel" type="Label" parent="CanvasLayer" unique_id=694414895]
+offset_left = 155.0
+offset_top = 4.0
+offset_right = 283.0
+offset_bottom = 27.0
+text = "文件路径"
+
+[node name="分界线1" type="Line2D" parent="CanvasLayer" unique_id=1430523641]
+points = PackedVector2Array(0, 36, 1920, 36)
+
+[node name="分界线2" type="Line2D" parent="CanvasLayer" unique_id=790335681]
+points = PackedVector2Array(360, 36, 360, 1080)
+
+[node name="分界线3" type="Line2D" parent="CanvasLayer" unique_id=1374877108]
+points = PackedVector2Array(0, 960, 360, 960)
+
+[node name="MetaManageButton" type="Button" parent="CanvasLayer" unique_id=1495818162]
+offset_left = 1675.0
+offset_right = 1723.0
+offset_bottom = 31.0
+text = "Meta"
+
+[node name="NoteManageButton" type="Button" parent="CanvasLayer" unique_id=341906734]
+offset_left = 1723.0
+offset_right = 1777.0
+offset_bottom = 31.0
+text = "Notes"
+
+[node name="EffectManageButton" type="Button" parent="CanvasLayer" unique_id=1090107415]
+offset_left = 1777.0
+offset_right = 1817.0
+offset_bottom = 31.0
+text = "动效
+"
+
+[node name="TextureManageButton" type="Button" parent="CanvasLayer" unique_id=1721442826]
+offset_left = 1817.0
+offset_right = 1857.0
+offset_bottom = 31.0
+text = "贴图"
+
+[node name="ShaderManageButton" type="Button" parent="CanvasLayer" unique_id=397250178]
+offset_left = 1857.0
+offset_right = 1920.0
+offset_bottom = 31.0
+text = "Shader"
+
+[node name="JudgeLinePanel" type="Panel" parent="CanvasLayer" unique_id=1298656757]
+offset_top = 40.0
+offset_right = 356.0
+offset_bottom = 956.0
+
+[node name="JudgeLineTree" type="Tree" parent="CanvasLayer/JudgeLinePanel" unique_id=1658221405]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 346.0
+offset_bottom = 860.0
+
+[node name="NewJudgeLineButton" type="Button" parent="CanvasLayer/JudgeLinePanel" unique_id=813521718]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 870.0
+offset_right = 50.0
+offset_bottom = 901.0
+text = "新建"
+
+[node name="DeleteJudgeLineButton" type="Button" parent="CanvasLayer/JudgeLinePanel" unique_id=806099393]
+layout_mode = 0
+offset_left = 55.0
+offset_top = 870.0
+offset_right = 95.0
+offset_bottom = 901.0
+text = "删除"
+
+[node name="RenameButton" type="Button" parent="CanvasLayer/JudgeLinePanel" unique_id=1057482677]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 870.0
+offset_right = 156.0
+offset_bottom = 901.0
+text = "重命名"
+
+[node name="BeatsDisplay" type="Label" parent="CanvasLayer" unique_id=1546326711]
+offset_left = 10.0
+offset_top = 970.0
+offset_right = 125.0
+offset_bottom = 993.0
+theme_override_font_sizes/font_size = 24
+text = "当前 0 拍 .000"
+
+[node name="TimeDisplay" type="Label" parent="CanvasLayer" unique_id=273835492]
+offset_left = 10.0
+offset_top = 1000.0
+offset_right = 74.0
+offset_bottom = 1023.0
+text = "0:00.000"
+
+[node name="UpdatedAt" type="Label" parent="CanvasLayer" unique_id=1388457881]
+offset_left = 10.0
+offset_top = 1020.0
+offset_right = 230.0
+offset_bottom = 1043.0
+text = "上次保存于 2026/4/1 11:45:14"
+
+[node name="MetaDisplay" type="Label" parent="CanvasLayer" unique_id=591081391]
+offset_left = 10.0
+offset_top = 1040.0
+offset_right = 160.0
+offset_bottom = 1063.0
+text = "2221 物量 2184 动效"
+
+[node name="EditArea" type="Node2D" parent="CanvasLayer" unique_id=510727928]
+position = Vector2(364, 40)
+
+[node name="MetaEditPanel" type="Panel" parent="CanvasLayer/EditArea" unique_id=674036058]
+offset_right = 1556.0
+offset_bottom = 1040.0
+
+[node name="文本：offset" type="Label" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1757967190]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 94.0
+offset_bottom = 33.0
+theme_override_font_sizes/font_size = 20
+text = "Offset 设置              音乐时长"
+
+[node name="OffsetLineEdit" type="LineEdit" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1707552176]
+layout_mode = 0
+offset_left = 130.0
+offset_top = 10.0
+offset_right = 198.5
+offset_bottom = 41.0
+
+[node name="文本：BPMList" type="Label" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1207509290]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 94.0
+offset_bottom = 78.0
+theme_override_font_sizes/font_size = 20
+text = "BPM List"
+
+[node name="BpmTree" type="Tree" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=443313993]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 85.0
+offset_right = 520.0
+offset_bottom = 985.0
+
+[node name="BpmValueEdit" type="LineEdit" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=942706494]
+layout_mode = 0
+offset_left = 70.0
+offset_top = 990.0
+offset_right = 138.5
+offset_bottom = 1021.0
+
+[node name="StartTimeEdit" type="LineEdit" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1476438919]
+layout_mode = 0
+offset_left = 260.0
+offset_top = 990.0
+offset_right = 460.0
+offset_bottom = 1021.0
+
+[node name="文本：BPM" type="Label" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=979770307]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 990.0
+offset_right = 50.0
+offset_bottom = 1013.0
+theme_override_font_sizes/font_size = 20
+text = "BPM="
+
+[node name="文本：startTime" type="Label" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1958999067]
+layout_mode = 0
+offset_left = 150.0
+offset_top = 990.0
+offset_right = 256.0
+offset_bottom = 1018.0
+theme_override_font_sizes/font_size = 20
+text = "StartTime="
+
+[node name="AddBpmButton" type="Button" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1388822546]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 50.0
+offset_right = 118.0
+offset_bottom = 81.0
+text = "新建"
+
+[node name="DeleteBpmButton" type="Button" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1968583233]
+layout_mode = 0
+offset_left = 150.0
+offset_top = 50.0
+offset_right = 190.0
+offset_bottom = 81.0
+text = "删除"
+
+[node name="DurationLineEdit" type="LineEdit" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1065187046]
+layout_mode = 0
+offset_left = 300.0
+offset_top = 10.0
+offset_right = 368.5
+offset_bottom = 41.0
+
+[node name="NotesEditPanel" type="Node2D" parent="CanvasLayer/EditArea" unique_id=1567283473]
+visible = false
+script = ExtResource("2_6p0iu")
+
+[node name="GridContainer" type="Node2D" parent="CanvasLayer/EditArea/NotesEditPanel" unique_id=1235825831]
+
+[node name="VScrollBar" type="VScrollBar" parent="CanvasLayer/EditArea/NotesEditPanel" unique_id=1236037572]
+offset_right = 8.0
+offset_bottom = 920.0
+
+[node name="EffectsEditPanel" type="Node2D" parent="CanvasLayer/EditArea" unique_id=221805700]
+visible = false
+script = ExtResource("3_0rrwi")
+
+[node name="GridContainer" type="Node2D" parent="CanvasLayer/EditArea/EffectsEditPanel" unique_id=325859455]
+
+[node name="VScrollBar" type="VScrollBar" parent="CanvasLayer/EditArea/EffectsEditPanel" unique_id=1076637829]
+offset_right = 8.0
+offset_bottom = 920.0
+
+[node name="TextureEditPanel" type="Panel" parent="CanvasLayer/EditArea" unique_id=2071986053]
+visible = false
+offset_right = 1556.0
+offset_bottom = 1040.0
+script = ExtResource("4_efgq6")
+
+[node name="TextureTree" type="Tree" parent="CanvasLayer/EditArea/TextureEditPanel" unique_id=357298309]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 85.0
+offset_right = 520.0
+offset_bottom = 1025.0
+
+[node name="AddButton" type="Button" parent="CanvasLayer/EditArea/TextureEditPanel" unique_id=32040398]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 50.0
+offset_right = 140.0
+offset_bottom = 81.0
+text = "添加"
+
+[node name="DeleteButton" type="Button" parent="CanvasLayer/EditArea/TextureEditPanel" unique_id=1768613635]
+layout_mode = 0
+offset_left = 150.0
+offset_top = 50.0
+offset_right = 190.0
+offset_bottom = 81.0
+text = "删除"
+
+[node name="FileDialog" type="FileDialog" parent="CanvasLayer/EditArea/TextureEditPanel" unique_id=1028890725]
+title = "Open a File"
+file_mode = 0
+filters = PackedStringArray("*.png", "*.jpg", "*.jpeg", "*.ogv")
+
+[node name="Label" type="Label" parent="CanvasLayer/EditArea/TextureEditPanel" unique_id=516601178]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 50.0
+offset_bottom = 73.0
+theme_override_font_sizes/font_size = 20
+text = "贴图列表"
+
+[node name="Label2" type="Label" parent="CanvasLayer/EditArea/TextureEditPanel" unique_id=135237404]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 90.0
+offset_bottom = 38.0
+theme_override_font_sizes/font_size = 20
+text = "贴图/视频绑线管理(beta)"
+
+[node name="TextureManageButton" type="Button" parent="CanvasLayer/EditArea/TextureEditPanel" unique_id=1826638536]
+layout_mode = 0
+offset_left = 200.0
+offset_top = 50.0
+offset_right = 240.0
+offset_bottom = 81.0
+text = "编辑"
+
+[node name="ShaderEditPanel" type="Node2D" parent="CanvasLayer/EditArea" unique_id=354520741]
+script = ExtResource("5_7ead7")
+
+[node name="VScrollBar" type="VScrollBar" parent="CanvasLayer/EditArea/ShaderEditPanel" unique_id=230262603]
+offset_left = -364.0
+offset_top = -40.0
+offset_right = -356.0
+offset_bottom = -32.0
+
+[connection signal="pressed" from="CanvasLayer/SaveButton" to="." method="_on_save_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/PreviewButton" to="." method="_on_preview_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/ReturnButton" to="." method="_on_return_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/MetaManageButton" to="." method="_on_meta_manage_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/NoteManageButton" to="." method="_on_note_manage_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/EffectManageButton" to="." method="_on_effect_manage_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/TextureManageButton" to="." method="_on_texture_manage_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/ShaderManageButton" to="." method="_on_shader_manage_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/JudgeLinePanel/NewJudgeLineButton" to="." method="_on_new_judge_line_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/JudgeLinePanel/DeleteJudgeLineButton" to="." method="_on_delete_judge_line_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/JudgeLinePanel/RenameButton" to="." method="_on_rename_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/EditArea/MetaEditPanel/AddBpmButton" to="." method="_on_add_bpm_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/EditArea/MetaEditPanel/DeleteBpmButton" to="." method="_on_delete_bpm_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/EditArea/TextureEditPanel/AddButton" to="CanvasLayer/EditArea/TextureEditPanel" method="_on_add_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/EditArea/TextureEditPanel/DeleteButton" to="CanvasLayer/EditArea/TextureEditPanel" method="_on_delete_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/EditArea/TextureEditPanel/TextureManageButton" to="CanvasLayer/EditArea/TextureEditPanel" method="_on_texture_manage_button_pressed"]
