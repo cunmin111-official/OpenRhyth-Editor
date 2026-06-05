@@ -1,0 +1,27 @@
+{
+	"BPMList": [
+		{
+			"bpm": 180.0,
+			"startTime": [
+				0.0,
+				0.0,
+				1.0
+			]
+		}
+	],
+	"META": {
+		"duration": 120.0,
+		"notes": 0,
+		"offset": 0.0
+	},
+	"Shader": {
+		"BackgroundB": [],
+		"BackgroundG": [],
+		"BackgroundR": [],
+		"Fog": []
+	},
+	"judgeLineGroup": [
+		"Default"
+	],
+	"judgeLineList": []
+}
