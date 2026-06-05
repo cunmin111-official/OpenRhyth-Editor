@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c3gepf0h1lk0e"]
 
-[ext_resource type="Script" uid="uid://cg733aafatadl" path="res://preview_page.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://cg733aafatadl" path="res://scene/preview/preview_page.gd" id="1_script"]
 
 [node name="PreviewPage" type="Control" unique_id=475455816]
 layout_mode = 3

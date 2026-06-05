@@ -1,14 +1,12 @@
 [gd_scene format=3 uid="uid://bg2cwxjekq2pw"]
 
-[ext_resource type="Script" uid="uid://bflka4erlllk" path="res://editor_main.gd" id="1_st2if"]
-[ext_resource type="Script" uid="uid://dphr2lfc0bvuy" path="res://notes_edit_panel.gd" id="2_6p0iu"]
-[ext_resource type="Script" uid="uid://3d7jetebgpy" path="res://effects_edit_panel.gd" id="3_0rrwi"]
-[ext_resource type="Script" uid="uid://bs2irqkpflc41" path="res://texture_edit_panel.gd" id="4_efgq6"]
-[ext_resource type="Script" uid="uid://cutyvxp58yq6k" path="res://shader_edit_panel.gd" id="5_7ead7"]
-[ext_resource type="Theme" uid="uid://c8theme001" path="res://res/fonts/editor_theme.tres" id="6_theme"]
+[ext_resource type="Script" uid="uid://bflka4erlllk" path="res://scene/editor/editor_main.gd" id="1_st2if"]
+[ext_resource type="Script" uid="uid://dphr2lfc0bvuy" path="res://scene/editor/notes_edit_panel.gd" id="2_6p0iu"]
+[ext_resource type="Script" uid="uid://3d7jetebgpy" path="res://scene/editor/effects_edit_panel.gd" id="3_0rrwi"]
+[ext_resource type="Script" uid="uid://bs2irqkpflc41" path="res://scene/editor/texture_edit_panel.gd" id="4_efgq6"]
+[ext_resource type="Script" uid="uid://cutyvxp58yq6k" path="res://scene/editor/shader_edit_panel.gd" id="5_7ead7"]
 
 [node name="EditorMain" type="Node2D" unique_id=1109177016]
-theme = ExtResource("6_theme")
 script = ExtResource("1_st2if")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=5261916]
