@@ -1,0 +1,40 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="OpenRhythEditor"
+run/main_scene="uid://cycsvov1ho86b"
+config/features=PackedStringArray("4.6", "GL Compatibility")
+config/icon="uid://pikskjudx74x"
+
+[autoload]
+
+Global="*uid://b5ue7s2f2f0d0"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/stretch/mode="canvas_items"
+
+[gui]
+
+theme/custom_font="uid://b210b36kngmw0"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+rendering_device/driver.windows="d3d12"
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

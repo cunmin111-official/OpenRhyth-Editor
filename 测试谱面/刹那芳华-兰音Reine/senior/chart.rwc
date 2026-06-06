@@ -1,0 +1,275 @@
+{
+	"BPMList": [
+		{
+			"bpm": 180.0,
+			"startTime": [
+				0.0,
+				0.0,
+				1.0
+			]
+		}
+	],
+	"META": {
+		"duration": 257.0,
+		"notes": 4,
+		"offset": 4667.0
+	},
+	"Shader": {
+		"BackgroundB": [
+			{
+				"_effect_type": 3.0,
+				"_is_continuous": false,
+				"end": 128.0,
+				"endTime": [
+					0.0,
+					0.0,
+					1.0
+				],
+				"isContinuous": 0.0,
+				"start": 128.0,
+				"startTime": [
+					0.0,
+					0.0,
+					1.0
+				],
+				"type": "Linear"
+			}
+		],
+		"BackgroundG": [
+			{
+				"_effect_type": 2.0,
+				"_is_continuous": false,
+				"end": 128.0,
+				"endTime": [
+					0.0,
+					0.0,
+					1.0
+				],
+				"isContinuous": 0.0,
+				"start": 128.0,
+				"startTime": [
+					0.0,
+					0.0,
+					1.0
+				],
+				"type": "Linear"
+			}
+		],
+		"BackgroundR": [
+			{
+				"_effect_type": 1.0,
+				"_is_continuous": false,
+				"end": 128.0,
+				"endTime": [
+					0.0,
+					0.0,
+					1.0
+				],
+				"isContinuous": 0.0,
+				"start": 128.0,
+				"startTime": [
+					0.0,
+					0.0,
+					1.0
+				],
+				"type": "Linear"
+			}
+		],
+		"Fog": []
+	},
+	"judgeLineGroup": [
+		"Default"
+	],
+	"judgeLineList": [
+		{
+			"Group": 1.0,
+			"Name": "Line1",
+			"eventLayers": [
+				{
+					"alphaEvents": [
+						{
+							"_effect_type": 6.0,
+							"_is_continuous": true,
+							"end": 255.0,
+							"endTime": [
+								0.0,
+								0.0,
+								1.0
+							],
+							"isContinuous": 1.0,
+							"start": 0.0,
+							"startTime": [
+								-2.0,
+								0.0,
+								1.0
+							],
+							"type": "Linear"
+						}
+					],
+					"moveXEvents": [],
+					"moveYEvents": [
+						{
+							"_effect_type": 1.0,
+							"_is_continuous": true,
+							"end": -50.0,
+							"endTime": [
+								1.0,
+								0.0,
+								1.0
+							],
+							"isContinuous": 1.0,
+							"start": 0.0,
+							"startTime": [
+								0.0,
+								0.0,
+								1.0
+							],
+							"type": "Linear"
+						}
+					],
+					"moveZEvents": [
+						{
+							"_effect_type": 2.0,
+							"_is_continuous": true,
+							"end": -50.0,
+							"endTime": [
+								4.0,
+								0.0,
+								1.0
+							],
+							"isContinuous": 1.0,
+							"start": 0.0,
+							"startTime": [
+								-1.0,
+								0.0,
+								1.0
+							],
+							"type": "Linear"
+						}
+					],
+					"rotateXEvents": [
+						{
+							"_effect_type": 3.0,
+							"_is_continuous": true,
+							"end": 180.0,
+							"endTime": [
+								2.0,
+								0.0,
+								1.0
+							],
+							"isContinuous": 1.0,
+							"start": 0.0,
+							"startTime": [
+								-1.0,
+								0.0,
+								1.0
+							],
+							"type": "Linear"
+						}
+					],
+					"rotateYEvents": [
+						{
+							"_effect_type": 4.0,
+							"_is_continuous": true,
+							"end": 180.0,
+							"endTime": [
+								2.0,
+								0.0,
+								1.0
+							],
+							"isContinuous": 1.0,
+							"start": 0.0,
+							"startTime": [
+								-1.0,
+								0.0,
+								1.0
+							],
+							"type": "y=180*(x**2)"
+						}
+					],
+					"rotateZEvents": [],
+					"speedEvents": []
+				}
+			],
+			"notes": [
+				{
+					"alpha": 1.0,
+					"endTime": [
+						4.0,
+						0.0,
+						1.0
+					],
+					"isFake": 0.0,
+					"positionX": 0.0,
+					"size": 1.0,
+					"speed": 1.0,
+					"startTime": [
+						4.0,
+						0.0,
+						1.0
+					],
+					"type": 1.0,
+					"visibleTime": 999999.0
+				},
+				{
+					"alpha": 1.0,
+					"endTime": [
+						5.0,
+						0.0,
+						1.0
+					],
+					"isFake": 0.0,
+					"positionX": 0.0,
+					"size": 1.0,
+					"speed": 1.0,
+					"startTime": [
+						5.0,
+						0.0,
+						1.0
+					],
+					"type": 2.0,
+					"visibleTime": 999999.0
+				},
+				{
+					"alpha": 1.0,
+					"endTime": [
+						7.0,
+						0.0,
+						1.0
+					],
+					"isFake": 0.0,
+					"positionX": 0.0,
+					"size": 1.0,
+					"speed": 1.0,
+					"startTime": [
+						6.0,
+						0.0,
+						1.0
+					],
+					"type": 0.0,
+					"visibleTime": 999999.0
+				},
+				{
+					"alpha": 1.0,
+					"endTime": [
+						3.0,
+						0.0,
+						1.0
+					],
+					"isFake": 0.0,
+					"positionX": 0.0,
+					"size": 1.0,
+					"speed": 1.0,
+					"startTime": [
+						2.0,
+						0.0,
+						1.0
+					],
+					"type": 0.0,
+					"visibleTime": 999999.0
+				}
+			],
+			"textures": []
+		}
+	]
+}

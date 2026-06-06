@@ -1,0 +1,110 @@
+[gd_scene format=3 uid="uid://cycsvov1ho86b"]
+
+[ext_resource type="Script" uid="uid://bpt7ayoba7yl3" path="res://scene/start_scene.gd" id="1_mbe3m"]
+
+[node name="StartScene" type="Control" unique_id=978180714]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_mbe3m")
+
+[node name="PlayFile" type="Button" parent="." unique_id=241801728]
+layout_mode = 0
+offset_left = 595.0
+offset_top = 539.0
+offset_right = 1405.0
+offset_bottom = 739.0
+theme_override_font_sizes/font_size = 36
+text = "播放 RWC"
+
+[node name="EditFile" type="Button" parent="." unique_id=1363857172]
+layout_mode = 0
+offset_left = 595.0
+offset_top = 738.0
+offset_right = 1405.0
+offset_bottom = 938.0
+theme_override_font_sizes/font_size = 36
+text = "编辑 RWC"
+
+[node name="FilePathLabel" type="Label" parent="." unique_id=110061672]
+layout_mode = 0
+offset_left = 813.0
+offset_top = 340.0
+offset_right = 909.0
+offset_bottom = 363.0
+theme_override_font_sizes/font_size = 24
+text = "暂未选择文件"
+
+[node name="SelectFileButton" type="Button" parent="." unique_id=1054624633]
+layout_mode = 0
+offset_left = 595.0
+offset_top = 324.0
+offset_right = 767.0
+offset_bottom = 392.0
+theme_override_font_sizes/font_size = 32
+text = "选择谱面"
+
+[node name="Title" type="Label" parent="." unique_id=437183870]
+layout_mode = 0
+offset_left = 760.0
+offset_top = 233.0
+offset_right = 1249.0
+offset_bottom = 313.0
+theme_override_font_sizes/font_size = 48
+text = "OpenRhyth.Editor"
+
+[node name="VersionLabel" type="Label" parent="." unique_id=180034980]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "v0.2.0 alpha designed by cunmin111
+Powered by Godot"
+
+[node name="FilePicker" type="FileDialog" parent="." unique_id=614988923]
+oversampling_override = 1.0
+title = "Open a File"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.rwc")
+
+[node name="滚木" type="Label" parent="." unique_id=621900486]
+layout_mode = 0
+offset_top = 2000.0
+offset_right = 136.0
+offset_bottom = 2049.0
+text = "Tip：满姐咻咻咻！
+应该没人看到吧（"
+
+[node name="SelectMusicButton" type="Button" parent="." unique_id=651400281]
+layout_mode = 0
+offset_left = 595.0
+offset_top = 400.0
+offset_right = 767.0
+offset_bottom = 468.0
+theme_override_font_sizes/font_size = 32
+text = "选择音乐"
+
+[node name="MusicPathLabel" type="Label" parent="." unique_id=2063475771]
+layout_mode = 0
+offset_left = 813.0
+offset_top = 415.0
+offset_right = 957.0
+offset_bottom = 449.0
+theme_override_font_sizes/font_size = 24
+text = "暂未选择文件"
+
+[node name="MusicPicker" type="FileDialog" parent="." unique_id=772079566]
+oversampling_override = 1.0
+title = "Open a File"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.mp3", "*.wav", "*.ogg")
+
+[connection signal="pressed" from="PlayFile" to="." method="_on_play_file_pressed"]
+[connection signal="pressed" from="EditFile" to="." method="_on_edit_file_pressed"]
+[connection signal="pressed" from="SelectFileButton" to="." method="_on_select_file_button_pressed"]
+[connection signal="file_selected" from="FilePicker" to="." method="_on_file_picker_file_selected"]
+[connection signal="pressed" from="SelectMusicButton" to="." method="_on_select_music_button_pressed"]
