@@ -293,7 +293,7 @@ func _on_shader_manage_button_pressed() -> void:
 	print("切换到 Shader 编辑模式")
 
 func _on_return_button_pressed() -> void:
-	get_tree().change_scene_to_file("res://start_scene.tscn")
+	get_tree().change_scene_to_file("res://scene/start_scene.tscn")
 
 func _on_preview_button_pressed() -> void:
 	var scroll_pos = 0.0
@@ -304,7 +304,7 @@ func _on_preview_button_pressed() -> void:
 	elif shader_edit_panel.visible:
 		scroll_pos = shader_edit_panel.v_scroll.value
 	Global.preview_time = scroll_pos
-	get_tree().change_scene_to_file("res://preview_page.tscn")
+	get_tree().change_scene_to_file("res://scene/preview/preview_page.tscn")
 
 # 保存按钮
 func _on_save_button_pressed():

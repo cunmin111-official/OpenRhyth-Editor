@@ -833,7 +833,7 @@ func _on_return_button_pressed() -> void:
 	is_playing = false
 	stop_all_videos()
 	Global.preview_time = current_time
-	get_tree().change_scene_to_file("res://editor_main.tscn")
+	get_tree().change_scene_to_file("res://scene/editor/editor_main.tscn")
 
 func stop_all_videos() -> void:
 	for line_info in judge_line_nodes:

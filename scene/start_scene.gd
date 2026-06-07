@@ -28,7 +28,7 @@ func _on_play_file_pressed():
 	pass
 
 func _on_edit_file_pressed():
-	get_tree().change_scene_to_file("res://editor_main.tscn")
+	get_tree().change_scene_to_file("res://scene/editor/editor_main.tscn")
 
 func _on_select_file_button_pressed():
 	file_picker.popup()
