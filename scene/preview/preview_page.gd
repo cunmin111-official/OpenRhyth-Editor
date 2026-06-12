@@ -18,6 +18,7 @@ var real_notes_data: Array = []
 var total_real_count: int = 0
 
 var combo_label: Label
+var combo_text_label: Label
 var score_label: Label
 var accuracy_label: Label
 
@@ -52,9 +53,23 @@ func build_ui_labels() -> void:
 	combo_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	combo_label.offset_left = 0.0
 	combo_label.offset_right = 200.0
-	combo_label.offset_top = -60.0
+	combo_label.offset_top = -80.0
 	combo_label.offset_bottom = -20.0
 	canvas.add_child(combo_label)
+
+	combo_text_label = Label.new()
+	combo_text_label.name = "ComboTextLabel"
+	combo_text_label.text = "『洛神』"
+	combo_text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	combo_text_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	combo_text_label.add_theme_font_size_override("font_size", 16)
+	combo_text_label.add_theme_color_override("font_color", Color(0, 0, 0))
+	combo_text_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	combo_text_label.offset_left = 0.0
+	combo_text_label.offset_right = 100.0
+	combo_text_label.offset_top = -20.0
+	combo_text_label.offset_bottom = -6.0
+	canvas.add_child(combo_text_label)
 
 	score_label = Label.new()
 	score_label.name = "ScoreLabel"

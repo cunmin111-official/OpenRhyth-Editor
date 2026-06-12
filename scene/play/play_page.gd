@@ -12,11 +12,25 @@ var current_time: float = 0.0
 var is_playing: bool = false
 var current_fog: float = 10.0
 
+# 判定系统相关
+var is_input_active: bool = false # 当前是否有输入（任意键/触摸）
+var combo: int = 0 # 当前连击
+var max_combo: int = 0 # 最大连击
+var perfect1_cnt: int = 0 # perfect1 计数
+var perfect_cnt: int = 0 # perfect 计数
+var good_cnt: int = 0 # good 计数
+var miss_cnt: int = 0 # miss 计数
+var total_notes_real: int = 0 # 非假音符总数（从 build_3d_scene 计算）
+var has_new_judgment: bool = false # 本帧是否有新判定（用于触发特效）
+var last_judge_error_ms: float = 0.0 # 最近一次判定的误差（ms）
+# Hold 判定跟踪
+var hold_pending_list: Array = [] # [{data, grade, end_time}]
+
 # 输入调试跟踪
 const FUNCTIONAL_KEYS: Dictionary = {KEY_ESCAPE: true}
-var _pressed_keys: Dictionary = {}  # keycode -> true
+var _pressed_keys: Dictionary = {} # keycode -> true
 var _new_key_presses: int = 0
-var _touch_indices: Dictionary = {}  # touch index -> true
+var _touch_indices: Dictionary = {} # touch index -> true
 var _new_touch_count: int = 0
 var _input_debug_label: Label
 
@@ -25,6 +39,7 @@ var real_notes_data: Array = []
 var total_real_count: int = 0
 
 var combo_label: Label
+var combo_text_label: Label
 var score_label: Label
 var accuracy_label: Label
 
@@ -74,9 +89,23 @@ func build_ui_labels() -> void:
 	combo_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	combo_label.offset_left = 0.0
 	combo_label.offset_right = 200.0
-	combo_label.offset_top = -60.0
+	combo_label.offset_top = -80.0
 	combo_label.offset_bottom = -20.0
 	canvas.add_child(combo_label)
+
+	combo_text_label = Label.new()
+	combo_text_label.name = "ComboTextLabel"
+	combo_text_label.text = "连击"
+	combo_text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	combo_text_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	combo_text_label.add_theme_font_size_override("font_size", 16)
+	combo_text_label.add_theme_color_override("font_color", Color(0, 0, 0))
+	combo_text_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	combo_text_label.offset_left = 5.0
+	combo_text_label.offset_right = 100.0
+	combo_text_label.offset_top = -20.0
+	combo_text_label.offset_bottom = -6.0
+	canvas.add_child(combo_text_label)
 
 	score_label = Label.new()
 	score_label.name = "ScoreLabel"
@@ -274,6 +303,7 @@ func build_3d_scene() -> void:
 			var note_type = int(note_data.get("type", 1))
 			var is_fake = float(note_data.get("isFake", 0.0))
 			if is_fake == 0.0:
+				note_data["judged"] = false
 				var pass_beat: float
 				if note_type == 0:
 					pass_beat = fraction_to_beat(note_data.get("endTime", [0, 0, 1]))
@@ -326,6 +356,8 @@ func build_3d_scene() -> void:
 				})
 
 		judge_line_nodes.append(line_info)
+
+	total_notes_real = total_real_count
 
 	var line_event_keys = ["alphaEvents", "moveXEvents", "moveYEvents", "moveZEvents", "rotateXEvents", "rotateYEvents", "rotateZEvents", "speedEvents", "notesAlphaEvents", "lengthEvents"]
 	for line_info in judge_line_nodes:
@@ -486,6 +518,280 @@ func get_layer_events(line_data: Dictionary, event_key: String) -> Array:
 		return []
 	return layers[0].get(event_key, [])
 
+func judge_single_note(note_data: Dictionary, input_time: float) -> String:
+	var note_type = int(note_data.get("type", 1))
+	var target_beat
+	if note_type == 0:
+		target_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+	else:
+		target_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+	var target_time = beat_to_time(target_beat)
+	var diff = input_time - target_time # seconds
+	
+	# 记录判定误差（用于调试显示）
+	last_judge_error_ms = diff * 1000.0
+
+	# Tap and Hold use the same rules
+	if note_type == 0 or note_type == 1:
+		if diff < -0.2:
+			return "" # too early, ignored
+		elif diff <= 0.05:
+			return "perfect1"
+		elif diff <= 0.1:
+			return "perfect"
+		elif diff <= 0.2:
+			return "good"
+		else:
+			return "miss"
+	# Drag: only perfect1 or miss
+	elif note_type == 2:
+		if diff >= 0.0 and diff <= 0.05:
+			return "perfect1"
+		elif diff > 0.05:
+			return "miss"
+		else:
+			return "" # too early
+	return ""
+
+func apply_judgment(note_data: Dictionary, grade: String) -> void:
+	note_data["judged"] = true
+	if grade == "":
+		return
+
+	match grade:
+		"perfect1":
+			perfect1_cnt += 1
+			combo += 1
+		"perfect":
+			perfect_cnt += 1
+			combo += 1
+		"good":
+			good_cnt += 1
+			combo += 1
+		"miss":
+			miss_cnt += 1
+			combo = 0
+
+	if combo > max_combo:
+		max_combo = combo
+
+	has_new_judgment = true
+
+func auto_judge_miss(note_data: Dictionary) -> void:
+	if note_data.get("judged", false):
+		return
+	note_data["judged"] = true
+	miss_cnt += 1
+	combo = 0
+	if combo > max_combo:
+		max_combo = combo
+	has_new_judgment = true
+
+# 判定特效纹理路径
+const JUDGE_TEXTURES = {
+	"perfect1": "res://res/judgeEffects/perfect1.png",
+	"perfect": "res://res/judgeEffects/perfect.png",
+	"good": "res://res/judgeEffects/good.png"
+}
+
+func spawn_judge_effect(world_pos: Vector3, grade: String, for_hold: bool = false) -> Sprite3D:
+	if grade == "" or grade == "miss":
+		return null
+	var tex_path = JUDGE_TEXTURES.get(grade, "")
+	if tex_path.is_empty():
+		return null
+	var tex = load(tex_path)
+	if tex == null:
+		return null
+	
+	var sprite = Sprite3D.new()
+	sprite.texture = tex
+	sprite.transparent = true
+	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	sprite.pixel_size = 0.05
+	sprite.position = world_pos
+	sprite.modulate = Color(1, 1, 1, 1.0)
+	world_3d.add_child(sprite)
+	
+	if for_hold:
+		# Hold 特效暂不渐隐，由 process_hold_judgment 控制生命周期
+		return sprite
+	
+	# 普通 Tap/Drag 特效：立即渐隐 0.5 秒
+	var tween = create_tween()
+	tween.tween_property(sprite, "modulate", Color(1, 1, 1, 0.0), 0.5)
+	tween.tween_callback(sprite.queue_free)
+	return sprite
+
+func fade_hold_effect(sprite: Sprite3D) -> void:
+	if sprite == null:
+		return
+	var tween = create_tween()
+	tween.tween_property(sprite, "modulate", Color(1, 1, 1, 0.0), 0.5)
+	tween.tween_callback(sprite.queue_free)
+
+func process_input_judgment() -> void:
+	if not is_playing:
+		return
+
+	var earliest_note = null
+	var earliest_time = INF
+	var earliest_type = -1
+	var earliest_line_info = null
+	var earliest_note_info = null
+
+	# Find earliest unjudged note within judgment windows
+	for line_info in judge_line_nodes:
+		# Check tap/drag notes
+		for note_info in line_info.get("note_sprites", []):
+			var note_data = note_info["data"]
+			if note_data.get("judged", false):
+				continue
+			var note_type = int(note_data.get("type", 1))
+			var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+			var note_time = beat_to_time(note_beat)
+			var diff = current_time - note_time
+
+			var in_window = false
+			if note_type == 1: # Tap
+				in_window = diff >= -0.2 and diff <= 0.2
+			elif note_type == 2: # Drag
+				in_window = diff >= 0.0 and diff <= 0.05
+
+			if in_window and note_time < earliest_time:
+				earliest_time = note_time
+				earliest_note = note_data
+				earliest_type = note_type
+				earliest_line_info = line_info
+				earliest_note_info = note_info
+
+		# Check hold notes (start time)
+		for hold_info in line_info.get("hold_bodies", []):
+			var note_data = hold_info["data"]
+			if note_data.get("judged", false):
+				continue
+			var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+			var start_time = beat_to_time(start_beat)
+			var diff = current_time - start_time
+
+			if diff >= -0.2 and diff <= 0.2 and start_time < earliest_time:
+				earliest_time = start_time
+				earliest_note = note_data
+				earliest_type = 0
+				earliest_line_info = line_info
+				earliest_note_info = null # Hold notes use hold_info
+
+	if earliest_note != null:
+		var grade = judge_single_note(earliest_note, current_time)
+		if grade != "":
+			# Calculate effect world position
+			var pos_x = float(earliest_note.get("positionX", 0.0))
+			var effect_pos = earliest_line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
+			
+			if earliest_type == 0:
+				# Hold: store grade but defer scoring
+				var end_beat = fraction_to_beat(earliest_note.get("endTime", [0, 0, 1]))
+				var end_time = beat_to_time(end_beat)
+				var effect_sprite = spawn_judge_effect(effect_pos, grade, true)
+				hold_pending_list.append({
+					"data": earliest_note,
+					"grade": grade,
+					"end_time": end_time,
+					"effect_sprite": effect_sprite
+				})
+				earliest_note["judged"] = true
+				earliest_note["hold_finalized"] = false
+				# Spawn effect at hold start position immediately
+				spawn_judge_effect(effect_pos, grade)
+			else:
+				apply_judgment(earliest_note, grade)
+				spawn_judge_effect(effect_pos, grade)
+
+func process_drag_timeouts() -> void:
+	for line_info in judge_line_nodes:
+		for note_info in line_info.get("note_sprites", []):
+			var note_data = note_info["data"]
+			if note_data.get("judged", false):
+				continue
+			var note_type = int(note_data.get("type", 1))
+			if note_type != 2:
+				continue
+			var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+			var note_time = beat_to_time(note_beat)
+			if current_time > note_time + 0.05:
+				auto_judge_miss(note_data)
+
+func process_tap_timeouts() -> void:
+	for line_info in judge_line_nodes:
+		for note_info in line_info.get("note_sprites", []):
+			var note_data = note_info["data"]
+			if note_data.get("judged", false):
+				continue
+			var note_type = int(note_data.get("type", 1))
+			if note_type != 1:
+				continue
+			var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+			var note_time = beat_to_time(note_beat)
+			if current_time > note_time + 0.2:
+				auto_judge_miss(note_data)
+
+func process_hold_judgment() -> void:
+	# 处理未判定的 Hold（开头没接到的情况）
+	for line_info in judge_line_nodes:
+		for hold_info in line_info.get("hold_bodies", []):
+			var note_data = hold_info["data"]
+			if note_data.get("judged", false):
+				continue
+			var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+			var start_time = beat_to_time(start_beat)
+			if current_time > start_time + 0.2:
+				auto_judge_miss(note_data)
+	
+	# 处理已判定的 Hold（跟踪松手和结束结算）
+	var to_remove = []
+	for entry in hold_pending_list:
+		var note_data = entry["data"]
+		var end_time = entry["end_time"]
+		var grade = entry["grade"]
+
+		# Check for mid-hold release
+		if current_time < end_time and not is_input_active:
+			# Rejudge as miss
+			miss_cnt += 1
+			combo = 0
+			if combo > max_combo:
+				max_combo = combo
+			note_data["hold_finalized"] = true
+			# 渐隐 Hold 特效
+			fade_hold_effect(entry.get("effect_sprite"))
+			to_remove.append(entry)
+			has_new_judgment = true
+			continue
+
+		# Check if hold has ended
+		if current_time >= end_time:
+			# Apply the initial grade
+			match grade:
+				"perfect1":
+					perfect1_cnt += 1
+					combo += 1
+				"perfect":
+					perfect_cnt += 1
+					combo += 1
+				"good":
+					good_cnt += 1
+					combo += 1
+			if combo > max_combo:
+				max_combo = combo
+			note_data["hold_finalized"] = true
+			# 渐隐 Hold 特效
+			fade_hold_effect(entry.get("effect_sprite"))
+			to_remove.append(entry)
+			has_new_judgment = true
+
+	for entry in to_remove:
+		hold_pending_list.erase(entry)
+
 func _process(delta: float) -> void:
 	if is_playing:
 		if audio_player.playing:
@@ -518,25 +824,40 @@ func _process(delta: float) -> void:
 	info_label.text = "节拍: %.3f  FPS: %d  Notes: %d  %s" % [current_beat, fps, visible_notes, video_debug]
 
 	# 更新输入调试信息
-	_input_debug_label.text = "Keys: %d (new: %d)  Touch: %d (new: %d)" % [
+	_input_debug_label.text = "Keys: %d (new: %d)  Touch: %d (new: %d)  JudgeErr: %+.1fms" % [
 		_pressed_keys.size(), _new_key_presses,
-		_touch_indices.size(), _new_touch_count
+		_touch_indices.size(), _new_touch_count,
+		last_judge_error_ms
 	]
 	# 每帧重置新增计数
 	_new_key_presses = 0
 	_new_touch_count = 0
 
-	var passed_count = 0
-	for pass_time in real_notes_data:
-		if pass_time <= current_time:
-			passed_count += 1
-		else:
-			break
-	combo_label.text = str(passed_count)
-	if total_real_count > 0:
-		var score = (float(passed_count) / float(total_real_count)) * 1000000.0 + float(passed_count)
-		score_label.text = "%07d" % floori(score)
+	# 每帧判定轮询
+	process_drag_timeouts()
+	process_tap_timeouts()
+	process_hold_judgment()
+
+	# 更新UI显示
+	combo_label.text = str(combo)
+	var total_judged = perfect1_cnt + perfect_cnt + good_cnt + miss_cnt
+	if total_notes_real > 0 and total_judged > 0:
+		# 实时准度（显示用）：仅基于已判定音符
+		var realtime_acc = float(perfect1_cnt + perfect_cnt) + 0.6 * float(good_cnt)
+		realtime_acc = realtime_acc / float(total_judged)
+		var acc_display = floor(realtime_acc * 10000.0) / 100.0
+		accuracy_label.text = "准度%.2f%%" % acc_display
+
+		# 总体准度（计分用）：基于总音符数
+		var overall_acc = float(perfect1_cnt + perfect_cnt) + 0.6 * float(good_cnt)
+		overall_acc = overall_acc / float(total_notes_real)
+		var acc_score = 900000.0 * overall_acc
+		var combo_score = 100000.0 * float(max_combo) / float(total_notes_real)
+		var bonus = float(perfect1_cnt)
+		var total_score = int(acc_score + combo_score + bonus)
+		score_label.text = "%07d" % total_score
 	else:
+		accuracy_label.text = "准度100.00%"
 		score_label.text = "0"
 
 	update_shader_effects()
@@ -708,6 +1029,9 @@ func update_notes(line_info: Dictionary, time_sec: float, speed: float, notes_al
 		update_hold_note(body, head, note_data, time_sec, current_beat, speed, notes_alpha)
 
 func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float) -> void:
+	if note_data.get("judged", false):
+		sprite.visible = false
+		return
 	var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
 	var note_time = beat_to_time(note_beat)
 	var pos_x = float(note_data.get("positionX", 0.0))
@@ -736,6 +1060,10 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 	sprite.modulate = Color(1, 1, 1, clamp(base_alpha, 0.0, 1.0))
 
 func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float) -> void:
+	if note_data.get("hold_finalized", false):
+		body.visible = false
+		head.visible = false
+		return
 	var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
 	var end_beat = fraction_to_beat(note_data.get("endTime", [0, 0, 1]))
 	var start_time = beat_to_time(start_beat)
@@ -808,6 +1136,13 @@ func _input(event: InputEvent) -> void:
 			_new_touch_count += 1
 		elif not event.pressed:
 			_touch_indices.erase(event.index)
+
+	# 更新 is_input_active
+	is_input_active = (_pressed_keys.size() > 0 or _touch_indices.size() > 0)
+
+	# 有新输入时触发判定（仅按键按下和触摸按下）
+	if (event is InputEventKey and event.pressed and not FUNCTIONAL_KEYS.has(event.keycode)) or (event is InputEventScreenTouch and event.pressed):
+		process_input_judgment()
 
 func start_playback() -> void:
 	is_playing = true
