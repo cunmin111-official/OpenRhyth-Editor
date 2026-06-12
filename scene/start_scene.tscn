@@ -18,7 +18,7 @@ offset_top = 539.0
 offset_right = 1405.0
 offset_bottom = 739.0
 theme_override_font_sizes/font_size = 36
-text = "播放 RWC"
+text = "游玩模块（测试Demo）"
 
 [node name="EditFile" type="Button" parent="." unique_id=1363857172]
 layout_mode = 0
@@ -54,13 +54,13 @@ offset_top = 233.0
 offset_right = 1249.0
 offset_bottom = 313.0
 theme_override_font_sizes/font_size = 48
-text = "OpenRhyth.Editor"
+text = "OpenRhyth v0.3.0"
 
 [node name="VersionLabel" type="Label" parent="." unique_id=180034980]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
-text = "v0.2.0 alpha designed by cunmin111
+text = "Designed by cunmin111
 Powered by Godot"
 
 [node name="FilePicker" type="FileDialog" parent="." unique_id=614988923]

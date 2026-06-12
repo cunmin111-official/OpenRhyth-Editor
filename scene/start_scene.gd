@@ -25,7 +25,15 @@ func _ready():
 		music_path_label.text = Global.selected_music_path
 
 func _on_play_file_pressed():
-	pass
+	if Global.selected_rwc_path == "":
+		print("[游玩] 错误：未选择谱面文件")
+		return
+	if Global.selected_music_path == "":
+		print("[游玩] 错误：未选择音乐文件")
+		return
+	# 重置预览时间，从开头播放
+	Global.preview_time = 0.0
+	get_tree().change_scene_to_file("res://scene/play/play_page.tscn")
 
 func _on_edit_file_pressed():
 	get_tree().change_scene_to_file("res://scene/editor/editor_main.tscn")
