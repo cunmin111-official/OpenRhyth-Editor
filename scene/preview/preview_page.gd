@@ -528,7 +528,7 @@ func _process(delta: float) -> void:
 	combo_label.text = str(passed_count)
 	if total_real_count > 0:
 		var score = (float(passed_count) / float(total_real_count)) * 1000000.0 + float(passed_count)
-		score_label.text = "%07d" % floori(score)
+		score_label.text = str(int(floor(score)))
 	else:
 		score_label.text = "0"
 

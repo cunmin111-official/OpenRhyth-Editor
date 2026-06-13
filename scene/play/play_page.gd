@@ -62,6 +62,9 @@ func _ready() -> void:
 	# 创建输入调试标签
 	_setup_input_debug_label()
 
+	# 刷新率设置
+	Engine.set_physics_ticks_per_second(1000)
+
 	# 进入游玩场景后自动开始播放
 	start_playback()
 
@@ -531,15 +534,16 @@ func judge_single_note(note_data: Dictionary, input_time: float) -> String:
 	# 记录判定误差（用于调试显示）
 	last_judge_error_ms = diff * 1000.0
 
-	# Tap and Hold use the same rules
+	# Tap and Hold use the same rules (symmetric early/late windows)
 	if note_type == 0 or note_type == 1:
 		if diff < -0.2:
 			return "" # too early, ignored
-		elif diff <= 0.05:
+		var abs_diff = abs(diff)
+		if abs_diff <= 0.05:
 			return "perfect1"
-		elif diff <= 0.1:
+		elif abs_diff <= 0.1:
 			return "perfect"
-		elif diff <= 0.2:
+		elif abs_diff <= 0.2:
 			return "good"
 		else:
 			return "miss"
@@ -639,6 +643,7 @@ func process_input_judgment() -> void:
 	var earliest_type = -1
 	var earliest_line_info = null
 	var earliest_note_info = null
+	var earliest_hold_info = null
 
 	# Find earliest unjudged note within judgment windows
 	for line_info in judge_line_nodes:
@@ -679,7 +684,8 @@ func process_input_judgment() -> void:
 				earliest_note = note_data
 				earliest_type = 0
 				earliest_line_info = line_info
-				earliest_note_info = null # Hold notes use hold_info
+				earliest_note_info = null
+				earliest_hold_info = hold_info # Hold notes use hold_info
 
 	if earliest_note != null:
 		var grade = judge_single_note(earliest_note, current_time)
@@ -697,7 +703,9 @@ func process_input_judgment() -> void:
 					"data": earliest_note,
 					"grade": grade,
 					"end_time": end_time,
-					"effect_sprite": effect_sprite
+					"effect_sprite": effect_sprite,
+					"head_sprite": earliest_hold_info["head"] if earliest_hold_info else null,
+					"line_info": earliest_line_info
 				})
 				earliest_note["judged"] = true
 				earliest_note["hold_finalized"] = false
@@ -720,6 +728,28 @@ func process_drag_timeouts() -> void:
 			var note_time = beat_to_time(note_beat)
 			if current_time > note_time + 0.05:
 				auto_judge_miss(note_data)
+
+func process_drag_while_held() -> void:
+	if not is_input_active:
+		return
+	for line_info in judge_line_nodes:
+		for note_info in line_info.get("note_sprites", []):
+			var note_data = note_info["data"]
+			if note_data.get("judged", false):
+				continue
+			var note_type = int(note_data.get("type", 1))
+			if note_type != 2:
+				continue
+			var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+			var note_time = beat_to_time(note_beat)
+			var diff = current_time - note_time
+			if diff >= 0.0 and diff <= 0.05:
+				var grade = judge_single_note(note_data, current_time)
+				if grade != "":
+					apply_judgment(note_data, grade)
+					var pos_x = float(note_data.get("positionX", 0.0))
+					var effect_pos = line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
+					spawn_judge_effect(effect_pos, grade)
 
 func process_tap_timeouts() -> void:
 	for line_info in judge_line_nodes:
@@ -792,6 +822,29 @@ func process_hold_judgment() -> void:
 	for entry in to_remove:
 		hold_pending_list.erase(entry)
 
+func update_hold_effect_positions() -> void:
+	for entry in hold_pending_list:
+		var effect = entry.get("effect_sprite")
+		var note_data = entry.get("data")
+		var line_info = entry.get("line_info")
+		if effect and line_info != null and note_data != null:
+			var pos_x = float(note_data.get("positionX", 0.0))
+			effect.global_position = line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
+
+func _physics_process(delta: float) -> void:
+	if not is_playing:
+		return
+	# 使用音频时间保证判定精度
+	if audio_player.playing:
+		current_time = audio_player.get_playback_position()
+	if current_time >= duration:
+		return
+	# 高刷新率判定处理
+	process_drag_while_held()
+	process_drag_timeouts()
+	process_tap_timeouts()
+	process_hold_judgment()
+
 func _process(delta: float) -> void:
 	if is_playing:
 		if audio_player.playing:
@@ -833,11 +886,6 @@ func _process(delta: float) -> void:
 	_new_key_presses = 0
 	_new_touch_count = 0
 
-	# 每帧判定轮询
-	process_drag_timeouts()
-	process_tap_timeouts()
-	process_hold_judgment()
-
 	# 更新UI显示
 	combo_label.text = str(combo)
 	var total_judged = perfect1_cnt + perfect_cnt + good_cnt + miss_cnt
@@ -855,13 +903,14 @@ func _process(delta: float) -> void:
 		var combo_score = 100000.0 * float(max_combo) / float(total_notes_real)
 		var bonus = float(perfect1_cnt)
 		var total_score = int(acc_score + combo_score + bonus)
-		score_label.text = "%07d" % total_score
+		score_label.text = str(total_score)
 	else:
 		accuracy_label.text = "准度100.00%"
 		score_label.text = "0"
 
 	update_shader_effects()
 	update_judge_lines(current_time)
+	update_hold_effect_positions()
 
 func update_shader_effects() -> void:
 	var shader = chart_data.get("Shader", {})
@@ -1100,9 +1149,9 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 
 	if time_diff_start > 0:
 		head.visible = true
-		head.position = Vector3(pos_x, y_start, 0.0)
 	else:
 		head.visible = false
+	head.position = Vector3(pos_x, y_start, 0.0)
 
 	var combined_alpha = notes_alpha * clamp(note_alpha, 0.0, 1.0)
 	var base_alpha = combined_alpha / 255.0
@@ -1140,8 +1189,8 @@ func _input(event: InputEvent) -> void:
 	# 更新 is_input_active
 	is_input_active = (_pressed_keys.size() > 0 or _touch_indices.size() > 0)
 
-	# 有新输入时触发判定（仅按键按下和触摸按下）
-	if (event is InputEventKey and event.pressed and not FUNCTIONAL_KEYS.has(event.keycode)) or (event is InputEventScreenTouch and event.pressed):
+	# 有新输入时触发判定（仅按键按下和触摸按下，过滤键盘重复事件）
+	if (event is InputEventKey and event.pressed and not event.echo and not FUNCTIONAL_KEYS.has(event.keycode)) or (event is InputEventScreenTouch and event.pressed):
 		process_input_judgment()
 
 func start_playback() -> void:
