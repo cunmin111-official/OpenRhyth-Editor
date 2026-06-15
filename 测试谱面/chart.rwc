@@ -31,152 +31,152 @@
 				{
 					"alphaEvents": [
 						{
-							"_effect_type": 6.0,
+							"_effect_type": 6,
 							"_is_continuous": false,
 							"end": 255.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 255.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveXEvents": [
 						{
-							"_effect_type": 0.0,
+							"_effect_type": 0,
 							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveYEvents": [
 						{
-							"_effect_type": 1.0,
+							"_effect_type": 1,
 							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveZEvents": [
 						{
-							"_effect_type": 2.0,
+							"_effect_type": 2,
 							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateXEvents": [
 						{
-							"_effect_type": 3.0,
+							"_effect_type": 3,
 							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateYEvents": [
 						{
-							"_effect_type": 4.0,
+							"_effect_type": 4,
 							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateZEvents": [
 						{
-							"_effect_type": 5.0,
+							"_effect_type": 5,
 							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"speedEvents": [
 						{
-							"_effect_type": 7.0,
+							"_effect_type": 7,
 							"_is_continuous": false,
 							"end": 1.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 1.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
@@ -192,198 +192,223 @@
 				{
 					"alphaEvents": [
 						{
+							"_effect_type": 6,
+							"_is_continuous": false,
 							"end": 255.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 255.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveXEvents": [
 						{
+							"_effect_type": 0,
+							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveYEvents": [
 						{
+							"_effect_type": 1,
+							"_is_continuous": false,
 							"end": 50.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 50.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						},
 						{
+							"_effect_type": 1,
+							"_is_continuous": true,
 							"end": 20.0,
 							"endTime": [
-								15.0,
-								0.0,
-								1.0
+								15,
+								0,
+								1
 							],
 							"start": 50.0,
 							"startTime": [
-								10.0,
-								0.0,
-								1.0
+								10,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveZEvents": [
 						{
+							"_effect_type": 2,
+							"_is_continuous": false,
 							"end": 20.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 20.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateXEvents": [
 						{
+							"_effect_type": 3,
+							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						},
 						{
+							"_effect_type": 3,
+							"_is_continuous": true,
 							"end": 180.0,
 							"endTime": [
-								20.0,
-								0.0,
-								1.0
+								20,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								15.0,
-								0.0,
-								1.0
+								15,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateYEvents": [
 						{
+							"_effect_type": 4,
+							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						},
 						{
+							"_effect_type": 4,
+							"_is_continuous": true,
 							"end": 180.0,
 							"endTime": [
-								20.0,
-								0.0,
-								1.0
+								20,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								15.0,
-								0.0,
-								1.0
+								15,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateZEvents": [
 						{
+							"_effect_type": 5,
+							"_is_continuous": false,
 							"end": 0.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						},
 						{
+							"_effect_type": 5,
+							"_is_continuous": true,
 							"end": 180.0,
 							"endTime": [
-								20.0,
-								0.0,
-								1.0
+								20,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								15.0,
-								0.0,
-								1.0
+								15,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"speedEvents": [
 						{
-							"end": 1.0,
+							"_effect_type": 7,
+							"_is_continuous": false,
+							"end": 200.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								-13,
+								0,
+								1
 							],
-							"start": 1.0,
+							"isContinuous": 0.0,
+							"start": 200.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								-13,
+								0,
+								1
 							],
-							"type": "linear"
+							"type": "Linear"
 						}
 					]
 				}
@@ -3586,7 +3611,30 @@
 		{
 			"Group": 1.0,
 			"Name": "Line2",
-			"eventLayers": [],
+			"eventLayers": [
+				{
+					"speedEvents": [
+						{
+							"_effect_type": 7,
+							"_is_continuous": false,
+							"end": 100.0,
+							"endTime": [
+								-13,
+								0,
+								1
+							],
+							"isContinuous": 0.0,
+							"start": 100.0,
+							"startTime": [
+								-13,
+								0,
+								1
+							],
+							"type": "Linear"
+						}
+					]
+				}
+			],
 			"notes": [
 				{
 					"alpha": 1.0,
@@ -5379,7 +5427,30 @@
 		{
 			"Group": 2.0,
 			"Name": "Line3",
-			"eventLayers": [],
+			"eventLayers": [
+				{
+					"speedEvents": [
+						{
+							"_effect_type": 7,
+							"_is_continuous": false,
+							"end": 100.0,
+							"endTime": [
+								-13,
+								0,
+								1
+							],
+							"isContinuous": 0.0,
+							"start": 100.0,
+							"startTime": [
+								-13,
+								0,
+								1
+							],
+							"type": "Linear"
+						}
+					]
+				}
+			],
 			"notes": [
 				{
 					"alpha": 1.0,
@@ -5827,136 +5898,152 @@
 				{
 					"alphaEvents": [
 						{
+							"_effect_type": 6,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveXEvents": [
 						{
+							"_effect_type": 0,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveYEvents": [
 						{
+							"_effect_type": 1,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveZEvents": [
 						{
+							"_effect_type": 2,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateXEvents": [
 						{
+							"_effect_type": 3,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateYEvents": [
 						{
+							"_effect_type": 4,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateZEvents": [
 						{
+							"_effect_type": 5,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"speedEvents": [
 						{
-							"end": 0.0,
+							"_effect_type": 7,
+							"_is_continuous": true,
+							"end": 100.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
@@ -6942,136 +7029,152 @@
 				{
 					"alphaEvents": [
 						{
+							"_effect_type": 6,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveXEvents": [
 						{
+							"_effect_type": 0,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveYEvents": [
 						{
+							"_effect_type": 1,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"moveZEvents": [
 						{
+							"_effect_type": 2,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateXEvents": [
 						{
+							"_effect_type": 3,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateYEvents": [
 						{
+							"_effect_type": 4,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"rotateZEvents": [
 						{
+							"_effect_type": 5,
+							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
 					],
 					"speedEvents": [
 						{
-							"end": 0.0,
+							"_effect_type": 7,
+							"_is_continuous": true,
+							"end": 100.0,
 							"endTime": [
-								1.0,
-								0.0,
-								1.0
+								1,
+								0,
+								1
 							],
 							"start": 0.0,
 							"startTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"type": "linear"
 						}
@@ -8019,20 +8122,20 @@
 				{
 					"alphaEvents": [
 						{
-							"_effect_type": 6.0,
+							"_effect_type": 6,
 							"_is_continuous": false,
 							"end": 255.0,
 							"endTime": [
-								-12.0,
-								0.0,
-								1.0
+								-12,
+								0,
+								1
 							],
 							"isContinuous": 0.0,
 							"start": 255.0,
 							"startTime": [
-								-12.0,
-								0.0,
-								1.0
+								-12,
+								0,
+								1
 							],
 							"type": "Linear"
 						}
