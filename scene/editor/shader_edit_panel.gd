@@ -33,6 +33,7 @@ var view_height: float = 0.0
 var total_duration: float = 0.0
 var offset_ms: int = 0
 var bpm_list: Array = []
+var bpm_cache: Array = []
 var pixels_per_second: float = 500.0
 var subdivision: int = 1
 
@@ -105,6 +106,7 @@ func update_data(new_chart_data: Dictionary):
 	offset_ms = meta.get("offset", 0)
 	total_duration = meta.get("duration", 0.0)
 	bpm_list = chart_data.get("BPMList", []).duplicate()
+	bpm_cache = Global.build_bpm_cache(bpm_list, offset_ms)
 	
 	var visible_seconds = view_height / pixels_per_second
 	v_scroll.max_value = max(0.0, total_duration + visible_seconds)
@@ -278,67 +280,10 @@ func _draw():
 
 # ========== 转换函数 ==========
 func beat_to_time(beat: float) -> float:
-	if bpm_list.is_empty():
-		return 0.0
-	var offset_sec = offset_ms / 1000.0
-	var first_entry = bpm_list[0]
-	var first_start_beat = fraction_to_beat(first_entry.get("startTime", [0,0,1]))
-	var first_bpm = first_entry.get("bpm", 120.0)
-	if beat < first_start_beat:
-		var beats_before = first_start_beat - beat
-		var time_before = beats_before * 60.0 / first_bpm
-		return -time_before + offset_sec
-	var time = 0.0
-	var current_time = 0.0
-	for i in range(bpm_list.size()):
-		var entry = bpm_list[i]
-		var start_beat = fraction_to_beat(entry.get("startTime", [0,0,1]))
-		var bpm = entry.get("bpm", 120.0)
-		var end_beat = INF
-		if i + 1 < bpm_list.size():
-			end_beat = fraction_to_beat(bpm_list[i+1].get("startTime", [0,0,1]))
-		if beat < start_beat:
-			break
-		if beat < end_beat:
-			var beats_elapsed = beat - start_beat
-			time = current_time + beats_elapsed * 60.0 / bpm
-			break
-		else:
-			var beats_in_segment = end_beat - start_beat
-			current_time += beats_in_segment * 60.0 / bpm
-	return time + offset_sec
+	return Global.cached_beat_to_time(bpm_cache, beat)
 
 func time_to_beat(time_sec: float) -> float:
-	if bpm_list.is_empty():
-		return 0.0
-	var offset_sec = offset_ms / 1000.0
-	var adjusted_time = time_sec - offset_sec
-	if adjusted_time < 0:
-		var first_entry = bpm_list[0]
-		var first_start_beat = fraction_to_beat(first_entry.get("startTime", [0,0,1]))
-		var first_bpm = first_entry.get("bpm", 120.0)
-		var time_before = -adjusted_time
-		var beats_before = time_before * first_bpm / 60.0
-		return first_start_beat - beats_before
-	var beat = 0.0
-	var current_time = 0.0
-	for i in range(bpm_list.size()):
-		var entry = bpm_list[i]
-		var start_beat = fraction_to_beat(entry.get("startTime", [0,0,1]))
-		var bpm = entry.get("bpm", 120.0)
-		var next_start_time = INF
-		if i + 1 < bpm_list.size():
-			var next_start_beat = fraction_to_beat(bpm_list[i+1].get("startTime", [0,0,1]))
-			var beats_in_segment = next_start_beat - start_beat
-			next_start_time = current_time + beats_in_segment * 60.0 / bpm
-		if adjusted_time <= next_start_time:
-			var elapsed = adjusted_time - current_time
-			beat = start_beat + elapsed * bpm / 60.0
-			break
-		else:
-			beat = start_beat + (next_start_time - current_time) * bpm / 60.0
-			current_time = next_start_time
-	return beat
+	return Global.cached_time_to_beat(bpm_cache, time_sec)
 
 func fraction_to_beat(fraction: Array) -> float:
 	if fraction.size() != 3:

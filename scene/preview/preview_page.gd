@@ -6,6 +6,7 @@ const VIDEO_EXTS: Array = ["ogv"]
 
 var chart_data: Dictionary = {}
 var bpm_list: Array = []
+var bpm_cache: Array = []
 var offset_ms: int = 0
 var duration: float = 0.0
 var current_time: float = 0.0
@@ -21,6 +22,7 @@ var combo_label: Label
 var combo_text_label: Label
 var score_label: Label
 var accuracy_label: Label
+var visible_note_count: int = 0
 
 @onready var world_3d: Node3D = $World3D
 @onready var camera: Camera3D = $World3D/Camera3D
@@ -134,6 +136,7 @@ func load_chart_data() -> void:
 	)
 	offset_ms = chart_data["META"].get("offset", 0)
 	duration = chart_data["META"].get("duration", 0.0)
+	bpm_cache = Global.build_bpm_cache(bpm_list, offset_ms)
 	progress_bar.max_value = duration
 	if Global.preview_time > 0.0:
 		current_time = clamp(Global.preview_time, 0.0, duration)
@@ -220,33 +223,7 @@ func build_3d_scene() -> void:
 		texture_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		line_group.add_child(texture_sprite)
 
-		var video_viewport = SubViewport.new()
-		video_viewport.name = "VideoViewport"
-		video_viewport.size = Vector2i(1920, 1080)
-		video_viewport.transparent_bg = false
-		video_viewport.handle_input_locally = false
-		video_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-		line_group.add_child(video_viewport)
-
-		var video_player_2d = VideoStreamPlayer.new()
-		video_player_2d.name = "VideoPlayer2D"
-		video_player_2d.volume_db = -80
-		video_player_2d.set_anchors_preset(Control.PRESET_FULL_RECT)
-		video_viewport.add_child(video_player_2d)
-
-		var video_mesh = MeshInstance3D.new()
-		video_mesh.name = "VideoMesh"
-		video_mesh.visible = false
-		var plane = PlaneMesh.new()
-		plane.size = Vector2(200.0, 112.5)
-		video_mesh.mesh = plane
-		var video_mat = StandardMaterial3D.new()
-		video_mat.albedo_color = Color(1, 1, 1, 1.0)
-		video_mat.billboard_mode = StandardMaterial3D.BILLBOARD_DISABLED
-		video_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		video_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		video_mesh.material_override = video_mat
-		line_group.add_child(video_mesh)
+		# 视频节点懒初始化：仅当遇到视频纹理时按需创建
 
 		var note_group = Node3D.new()
 		note_group.name = "NoteGroup"
@@ -256,9 +233,10 @@ func build_3d_scene() -> void:
 			"node": line_group,
 			"mesh": line_mesh,
 			"texture_sprite": texture_sprite,
-			"video_viewport": video_viewport,
-			"video_player_2d": video_player_2d,
-			"video_mesh": video_mesh,
+			"video_viewport": null,
+			"video_player_2d": null,
+			"video_mesh": null,
+			"video_initialized": false,
 			"name_label": name_label,
 			"note_group": note_group,
 			"data": line_data,
@@ -349,67 +327,10 @@ func fraction_to_beat(fraction: Array) -> float:
 	return integer + numerator / denominator
 
 func beat_to_time(beat: float) -> float:
-	if bpm_list.is_empty():
-		return 0.0
-	var offset_sec = offset_ms / 1000.0
-	var first_entry = bpm_list[0]
-	var first_start_beat = fraction_to_beat(first_entry.get("startTime", [0, 0, 1]))
-	var first_bpm = first_entry.get("bpm", 120.0)
-	if beat < first_start_beat:
-		var beats_before = first_start_beat - beat
-		var time_before = beats_before * 60.0 / first_bpm
-		return -time_before + offset_sec
-	var time = 0.0
-	var acc_time = 0.0
-	for i in range(bpm_list.size()):
-		var entry = bpm_list[i]
-		var start_beat = fraction_to_beat(entry.get("startTime", [0, 0, 1]))
-		var bpm = entry.get("bpm", 120.0)
-		var end_beat = INF
-		if i + 1 < bpm_list.size():
-			end_beat = fraction_to_beat(bpm_list[i + 1].get("startTime", [0, 0, 1]))
-		if beat < start_beat:
-			break
-		if beat < end_beat:
-			var beats_elapsed = beat - start_beat
-			time = acc_time + beats_elapsed * 60.0 / bpm
-			break
-		else:
-			var beats_in_segment = end_beat - start_beat
-			acc_time += beats_in_segment * 60.0 / bpm
-	return time + offset_sec
+	return Global.cached_beat_to_time(bpm_cache, beat)
 
 func time_to_beat(time_sec: float) -> float:
-	if bpm_list.is_empty():
-		return 0.0
-	var offset_sec = offset_ms / 1000.0
-	var adjusted_time = time_sec - offset_sec
-	if adjusted_time < 0:
-		var first_entry = bpm_list[0]
-		var first_start_beat = fraction_to_beat(first_entry.get("startTime", [0, 0, 1]))
-		var first_bpm = first_entry.get("bpm", 120.0)
-		var time_before = - adjusted_time
-		var beats_before = time_before * first_bpm / 60.0
-		return first_start_beat - beats_before
-	var beat = 0.0
-	var acc_time = 0.0
-	for i in range(bpm_list.size()):
-		var entry = bpm_list[i]
-		var start_beat = fraction_to_beat(entry.get("startTime", [0, 0, 1]))
-		var bpm = entry.get("bpm", 120.0)
-		var next_start_time = INF
-		if i + 1 < bpm_list.size():
-			var next_start_beat = fraction_to_beat(bpm_list[i + 1].get("startTime", [0, 0, 1]))
-			var beats_in_segment = next_start_beat - start_beat
-			next_start_time = acc_time + beats_in_segment * 60.0 / bpm
-		if adjusted_time <= next_start_time:
-			var elapsed = adjusted_time - acc_time
-			beat = start_beat + elapsed * bpm / 60.0
-			break
-		else:
-			beat = start_beat + (next_start_time - acc_time) * bpm / 60.0
-			acc_time = next_start_time
-	return beat
+	return Global.cached_time_to_beat(bpm_cache, time_sec)
 
 func eval_expression(expr_str: String, x_val: float) -> float:
 	var s = expr_str.strip_edges()
@@ -501,15 +422,10 @@ func _process(delta: float) -> void:
 
 	var current_beat = time_to_beat(current_time)
 	var fps = Engine.get_frames_per_second()
-	var visible_notes = 0
 	var video_debug = ""
+	# 增量计数由 update_notes 填充
+	visible_note_count = 0
 	for line_info in judge_line_nodes:
-		for ns in line_info.get("note_sprites", []):
-			if ns["sprite"].visible:
-				visible_notes += 1
-		for hb in line_info.get("hold_bodies", []):
-			if hb["body"].visible:
-				visible_notes += 1
 		var vm = line_info.get("video_mesh")
 		if vm and vm.visible:
 			var vp = line_info.get("video_player_2d")
@@ -517,14 +433,10 @@ func _process(delta: float) -> void:
 			var playing = vp and vp.is_playing()
 			var tex = mat.albedo_texture if mat else null
 			video_debug = "Vplay=%s tex=%s" % [playing, tex != null]
-	info_label.text = "节拍: %.3f  FPS: %d  Notes: %d  %s" % [current_beat, fps, visible_notes, video_debug]
+	info_label.text = "节拍: %.3f  FPS: %d  Notes: %d  %s" % [current_beat, fps, visible_note_count, video_debug]
 
-	var passed_count = 0
-	for pass_time in real_notes_data:
-		if pass_time <= current_time:
-			passed_count += 1
-		else:
-			break
+	# 二分查找已过时音符
+	var passed_count = _bisect_left(real_notes_data, current_time)
 	combo_label.text = str(passed_count)
 	if total_real_count > 0:
 		var score = (float(passed_count) / float(total_real_count)) * 1000000.0 + float(passed_count)
@@ -545,6 +457,7 @@ func update_shader_effects() -> void:
 	RenderingServer.set_default_clear_color(Color(bg_r, bg_g, bg_b))
 
 func update_judge_lines(time_sec: float) -> void:
+	var cam_pos = camera.global_position  # 缓存每帧只取一次
 	for line_info in judge_line_nodes:
 		var line_data = line_info["data"]
 		var line_node: Node3D = line_info["node"]
@@ -584,7 +497,43 @@ func update_judge_lines(time_sec: float) -> void:
 		if not has_image:
 			if name_label:
 				name_label.modulate = Color(0.6, 0.85, 1.0, 0.5 + 0.5 * line_alpha_with_fog)
-		update_notes(line_info, time_sec, speed, notes_alpha)
+		update_notes(line_info, time_sec, speed, notes_alpha, cam_pos)
+
+func _ensure_video_nodes(line_info: Dictionary, line_group: Node3D) -> void:
+	if line_info.get("video_initialized", false):
+		return
+	line_info["video_initialized"] = true
+
+	var video_viewport = SubViewport.new()
+	video_viewport.name = "VideoViewport"
+	video_viewport.size = Vector2i(1920, 1080)
+	video_viewport.transparent_bg = false
+	video_viewport.handle_input_locally = false
+	video_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	line_group.add_child(video_viewport)
+	line_info["video_viewport"] = video_viewport
+
+	var video_player_2d = VideoStreamPlayer.new()
+	video_player_2d.name = "VideoPlayer2D"
+	video_player_2d.volume_db = -80
+	video_player_2d.set_anchors_preset(Control.PRESET_FULL_RECT)
+	video_viewport.add_child(video_player_2d)
+	line_info["video_player_2d"] = video_player_2d
+
+	var video_mesh = MeshInstance3D.new()
+	video_mesh.name = "VideoMesh"
+	video_mesh.visible = false
+	var plane = PlaneMesh.new()
+	plane.size = Vector2(200.0, 112.5)
+	video_mesh.mesh = plane
+	var video_mat = StandardMaterial3D.new()
+	video_mat.albedo_color = Color(1, 1, 1, 1.0)
+	video_mat.billboard_mode = StandardMaterial3D.BILLBOARD_DISABLED
+	video_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	video_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	video_mesh.material_override = video_mat
+	line_group.add_child(video_mesh)
+	line_info["video_mesh"] = video_mesh
 
 func update_textures(line_info: Dictionary, time_sec: float, line_alpha: float, length_pct: float = 100.0) -> bool:
 	var texture_sprite: Sprite3D = line_info["texture_sprite"]
@@ -629,7 +578,10 @@ func update_textures(line_info: Dictionary, time_sec: float, line_alpha: float, 
 	if ext in VIDEO_EXTS:
 		texture_sprite.visible = false
 		if video_player_2d == null:
-			return false
+			_ensure_video_nodes(line_info, line_info["node"])
+			video_viewport = line_info["video_viewport"]
+			video_player_2d = line_info["video_player_2d"]
+			video_mesh = line_info["video_mesh"]
 		if not FileAccess.file_exists(full_path):
 			stop_video_mesh(video_player_2d, video_mesh)
 			return false
@@ -680,27 +632,43 @@ func load_image_fallback(path: String) -> Texture2D:
 		return null
 	return ImageTexture.create_from_image(img)
 
+# 二分查找：返回第一个 >= value 的索引（已排序数组用）
+static func _bisect_left(arr: Array, value: float) -> int:
+	var lo = 0
+	var hi = arr.size()
+	while lo < hi:
+		var mid = (lo + hi) / 2
+		if arr[mid] < value:
+			lo = mid + 1
+		else:
+			hi = mid
+	return lo
+
 func stop_video_mesh(video_player_2d, video_mesh) -> void:
 	if video_player_2d and video_player_2d.is_playing():
 		video_player_2d.stop()
 	if video_mesh and video_mesh.visible:
 		video_mesh.visible = false
 
-func update_notes(line_info: Dictionary, time_sec: float, speed: float, notes_alpha: float) -> void:
+func update_notes(line_info: Dictionary, time_sec: float, speed: float, notes_alpha: float, cam_pos: Vector3) -> void:
 	var current_beat = time_to_beat(time_sec)
 
 	for note_info in line_info["note_sprites"]:
 		var sprite: Sprite3D = note_info["sprite"]
 		var note_data: Dictionary = note_info["data"]
-		update_single_note(sprite, note_data, time_sec, current_beat, speed, notes_alpha)
+		update_single_note(sprite, note_data, time_sec, current_beat, speed, notes_alpha, cam_pos)
+		if sprite.visible:
+			visible_note_count += 1
 
 	for hold_info in line_info["hold_bodies"]:
 		var body: Sprite3D = hold_info["body"]
 		var head: Sprite3D = hold_info["head"]
 		var note_data: Dictionary = hold_info["data"]
-		update_hold_note(body, head, note_data, time_sec, current_beat, speed, notes_alpha)
+		update_hold_note(body, head, note_data, time_sec, current_beat, speed, notes_alpha, cam_pos)
+		if body.visible:
+			visible_note_count += 1
 
-func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float) -> void:
+func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float, cam_pos: Vector3) -> void:
 	var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
 	var note_time = beat_to_time(note_beat)
 	var pos_x = float(note_data.get("positionX", 0.0))
@@ -723,12 +691,12 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 	var combined_alpha = notes_alpha * clamp(note_alpha, 0.0, 1.0)
 	var base_alpha = combined_alpha / 255.0
 	var fog_distance = max(current_fog * 10.0, 1.0)
-	var cam_dist = sprite.global_position.distance_to(camera.global_position)
+	var cam_dist = sprite.global_position.distance_to(cam_pos)
 	var fog_alpha = exp(-cam_dist / fog_distance)
 	base_alpha *= fog_alpha
 	sprite.modulate = Color(1, 1, 1, clamp(base_alpha, 0.0, 1.0))
 
-func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float) -> void:
+func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float, cam_pos: Vector3) -> void:
 	var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
 	var end_beat = fraction_to_beat(note_data.get("endTime", [0, 0, 1]))
 	var start_time = beat_to_time(start_beat)
@@ -772,7 +740,7 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 	var combined_alpha = notes_alpha * clamp(note_alpha, 0.0, 1.0)
 	var base_alpha = combined_alpha / 255.0
 	var fog_distance = max(current_fog * 10.0, 1.0)
-	var cam_dist = body.global_position.distance_to(camera.global_position)
+	var cam_dist = body.global_position.distance_to(cam_pos)
 	var fog_alpha = exp(-cam_dist / fog_distance)
 	base_alpha *= fog_alpha
 	var final_alpha = clamp(base_alpha, 0.0, 1.0)
