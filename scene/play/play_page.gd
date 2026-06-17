@@ -4,6 +4,20 @@ const HOLD_TEXTURE_HEIGHT_PX: float = 400.0
 const HOLD_SPRITE_PIXEL_SIZE: float = 0.05
 const VIDEO_EXTS: Array = ["ogv"]
 
+# 预加载纹理
+var preloaded_textures: Dictionary = {}
+var judge_textures = {
+	"perfect1": preload("res://res/judgeEffects/perfect1.png"),
+	"perfect": preload("res://res/judgeEffects/perfect.png"),
+	"good": preload("res://res/judgeEffects/good.png"),
+}
+var note_textures = {
+	"hold_body": preload("res://res/note/hold.png"),
+	"hold_head": preload("res://res/note/hold_head.png"),
+	"tap": preload("res://res/note/tap.png"),
+	"drag": preload("res://res/note/drag.png"),
+}
+
 var chart_data: Dictionary = {}
 var bpm_list: Array = []
 var bpm_cache: Array = [] # BPM 分段缓存，用于 O(log n) 时间转换
@@ -56,6 +70,7 @@ func _ready() -> void:
 
 	load_chart_data()
 	load_audio()
+	preload_textures()
 	build_3d_scene()
 	real_notes_data.sort()
 	build_ui_labels()
@@ -296,7 +311,7 @@ func build_3d_scene() -> void:
 			if note_type == 0:
 				var hold_body = Sprite3D.new()
 				hold_body.name = "HoldBody"
-				hold_body.texture = load("res://res/note/hold.png")
+				hold_body.texture = note_textures["hold_body"]
 				hold_body.transparent = true
 				hold_body.pixel_size = 0.05
 				hold_body.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
@@ -305,7 +320,7 @@ func build_3d_scene() -> void:
 
 				var hold_head = Sprite3D.new()
 				hold_head.name = "HoldHead"
-				hold_head.texture = load("res://res/note/hold_head.png")
+				hold_head.texture = note_textures["hold_head"]
 				hold_head.transparent = true
 				hold_head.pixel_size = 0.05
 				hold_head.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
@@ -321,9 +336,9 @@ func build_3d_scene() -> void:
 				var sprite = Sprite3D.new()
 				sprite.name = "NoteSprite"
 				if note_type == 1:
-					sprite.texture = load("res://res/note/tap.png")
+					sprite.texture = note_textures["tap"]
 				elif note_type == 2:
-					sprite.texture = load("res://res/note/drag.png")
+					sprite.texture = note_textures["drag"]
 				sprite.transparent = true
 				sprite.pixel_size = 0.05
 				sprite.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
@@ -511,20 +526,10 @@ func auto_judge_miss(note_data: Dictionary) -> void:
 		max_combo = combo
 	has_new_judgment = true
 
-# 判定特效纹理路径
-const JUDGE_TEXTURES = {
-	"perfect1": "res://res/judgeEffects/perfect1.png",
-	"perfect": "res://res/judgeEffects/perfect.png",
-	"good": "res://res/judgeEffects/good.png"
-}
-
 func spawn_judge_effect(world_pos: Vector3, grade: String, for_hold: bool = false) -> Sprite3D:
 	if grade == "" or grade == "miss":
 		return null
-	var tex_path = JUDGE_TEXTURES.get(grade, "")
-	if tex_path.is_empty():
-		return null
-	var tex = load(tex_path)
+	var tex = judge_textures.get(grade)
 	if tex == null:
 		return null
 	
@@ -635,23 +640,31 @@ func process_input_judgment() -> void:
 				apply_judgment(earliest_note, grade)
 				spawn_judge_effect(effect_pos, grade)
 
-func process_drag_timeouts() -> void:
+# ========== 统一判定入口（由 _input 触发，无输入时不做任何刷新） ==========
+func process_timeouts() -> void:
 	for line_info in judge_line_nodes:
 		for note_info in line_info.get("note_sprites", []):
 			var note_data = note_info["data"]
 			if note_data.get("judged", false):
 				continue
 			var note_type = int(note_data.get("type", 1))
-			if note_type != 2:
-				continue
 			var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
 			var note_time = beat_to_time(note_beat)
-			if current_time > note_time + 0.05:
+			var window_end = 0.2 if note_type == 1 else 0.05
+			if current_time > note_time + window_end:
+				auto_judge_miss(note_data)
+		# Hold 开头没接到的超时
+		for hold_info in line_info.get("hold_bodies", []):
+			var note_data = hold_info["data"]
+			if note_data.get("judged", false):
+				continue
+			var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+			var start_time = beat_to_time(start_beat)
+			if current_time > start_time + 0.2:
 				auto_judge_miss(note_data)
 
 func process_drag_while_held() -> void:
-	if not is_input_active:
-		return
+	# 按键/触摸按住时，在此期间的 Drag 自动 Perfect（认定误差 0ms）
 	for line_info in judge_line_nodes:
 		for note_info in line_info.get("note_sprites", []):
 			var note_data = note_info["data"]
@@ -664,63 +677,33 @@ func process_drag_while_held() -> void:
 			var note_time = beat_to_time(note_beat)
 			var diff = current_time - note_time
 			if diff >= 0.0 and diff <= 0.05:
-				var grade = judge_single_note(note_data, current_time)
-				if grade != "":
-					apply_judgment(note_data, grade)
-					var pos_x = float(note_data.get("positionX", 0.0))
-					var effect_pos = line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
-					spawn_judge_effect(effect_pos, grade)
+				last_judge_error_ms = 0.0
+				apply_judgment(note_data, "perfect1")
+				var pos_x = float(note_data.get("positionX", 0.0))
+				var effect_pos = line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
+				spawn_judge_effect(effect_pos, "perfect1")
 
-func process_tap_timeouts() -> void:
-	for line_info in judge_line_nodes:
-		for note_info in line_info.get("note_sprites", []):
-			var note_data = note_info["data"]
-			if note_data.get("judged", false):
-				continue
-			var note_type = int(note_data.get("type", 1))
-			if note_type != 1:
-				continue
-			var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-			var note_time = beat_to_time(note_beat)
-			if current_time > note_time + 0.2:
-				auto_judge_miss(note_data)
-
-func process_hold_judgment() -> void:
-	# 处理未判定的 Hold（开头没接到的情况）
-	for line_info in judge_line_nodes:
-		for hold_info in line_info.get("hold_bodies", []):
-			var note_data = hold_info["data"]
-			if note_data.get("judged", false):
-				continue
-			var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-			var start_time = beat_to_time(start_beat)
-			if current_time > start_time + 0.2:
-				auto_judge_miss(note_data)
-	
-	# 处理已判定的 Hold（跟踪松手和结束结算）
+func process_hold_end_and_release() -> void:
 	var to_remove = []
 	for entry in hold_pending_list:
 		var note_data = entry["data"]
 		var end_time = entry["end_time"]
 		var grade = entry["grade"]
 
-		# Check for mid-hold release
+		# 松手（is_input_active=false）且未到达结束时间 → miss
 		if current_time < end_time and not is_input_active:
-			# Rejudge as miss
 			miss_cnt += 1
 			combo = 0
 			if combo > max_combo:
 				max_combo = combo
 			note_data["hold_finalized"] = true
-			# 渐隐 Hold 特效
 			fade_hold_effect(entry.get("effect_sprite"))
 			to_remove.append(entry)
 			has_new_judgment = true
 			continue
 
-		# Check if hold has ended
+		# Hold 持续时间结束 → 结算分数
 		if current_time >= end_time:
-			# Apply the initial grade
 			match grade:
 				"perfect1":
 					perfect1_cnt += 1
@@ -734,7 +717,6 @@ func process_hold_judgment() -> void:
 			if combo > max_combo:
 				max_combo = combo
 			note_data["hold_finalized"] = true
-			# 渐隐 Hold 特效
 			fade_hold_effect(entry.get("effect_sprite"))
 			to_remove.append(entry)
 			has_new_judgment = true
@@ -750,20 +732,6 @@ func update_hold_effect_positions() -> void:
 		if effect and line_info != null and note_data != null:
 			var pos_x = float(note_data.get("positionX", 0.0))
 			effect.global_position = line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
-
-func _physics_process(delta: float) -> void:
-	if not is_playing:
-		return
-	# 使用音频时间保证判定精度
-	if audio_player.playing:
-		current_time = audio_player.get_playback_position()
-	if current_time >= duration:
-		return
-	# 高刷新率判定处理
-	process_drag_while_held()
-	process_drag_timeouts()
-	process_tap_timeouts()
-	process_hold_judgment()
 
 func _process(delta: float) -> void:
 	if is_playing:
@@ -826,6 +794,12 @@ func _process(delta: float) -> void:
 	update_shader_effects()
 	update_judge_lines(current_time)
 	update_hold_effect_positions()
+	# 按住时 Drag 持续自动 Perfect（仅遍历未判定的 Drag，开销很小）
+	if is_input_active:
+		process_drag_while_held()
+	# Hold 结束时间到达时自动结算（仅检查活跃 Hold，开销极小）
+	if hold_pending_list.size() > 0:
+		process_hold_end_and_release()
 
 func update_shader_effects() -> void:
 	var shader = chart_data.get("Shader", {})
@@ -837,7 +811,7 @@ func update_shader_effects() -> void:
 	RenderingServer.set_default_clear_color(Color(bg_r, bg_g, bg_b))
 
 func update_judge_lines(time_sec: float) -> void:
-	var cam_pos = camera.global_position # 缓存每帧只取一次
+	var cam_pos = camera.global_position  # 缓存每帧只取一次
 	for line_info in judge_line_nodes:
 		var line_data = line_info["data"]
 		var line_node: Node3D = line_info["node"]
@@ -850,7 +824,9 @@ func update_judge_lines(time_sec: float) -> void:
 		var rot_y = get_event_value_at_time(get_layer_events(line_data, "rotateYEvents"), time_sec, 0.0)
 		var rot_z = get_event_value_at_time(get_layer_events(line_data, "rotateZEvents"), time_sec, 0.0)
 		var alpha = get_event_value_at_time(get_layer_events(line_data, "alphaEvents"), time_sec, 0.0)
-		var speed = get_event_value_at_time(get_layer_events(line_data, "speedEvents"), time_sec, 50.0)
+		var speed_events = get_layer_events(line_data, "speedEvents")
+		# 预计算速度积分缓存（每条线每帧一次，避免每个音符都 O(n²) 扫描）
+		var speed_cache = _build_speed_cache(speed_events)
 		var notes_alpha = get_event_value_at_time(get_layer_events(line_data, "notesAlphaEvents"), time_sec, 255.0)
 		var line_length = get_event_value_at_time(get_layer_events(line_data, "lengthEvents"), time_sec, 200.0)
 
@@ -877,7 +853,7 @@ func update_judge_lines(time_sec: float) -> void:
 		if not has_image:
 			if name_label:
 				name_label.modulate = Color(0.6, 0.85, 1.0, 0.5 + 0.5 * line_alpha_with_fog)
-		update_notes(line_info, time_sec, speed, notes_alpha, cam_pos)
+		update_notes(line_info, time_sec, speed_events, speed_cache, notes_alpha, cam_pos)
 
 func _ensure_video_nodes(line_info: Dictionary, line_group: Node3D) -> void:
 	if line_info.get("video_initialized", false):
@@ -943,19 +919,15 @@ func update_textures(line_info: Dictionary, time_sec: float, line_alpha: float, 
 		texture_sprite.visible = false
 		stop_video_mesh(video_player_2d, video_mesh)
 		return false
-	var rwc_path = Global.selected_rwc_path
-	var base_dir = rwc_path.get_base_dir()
-	var full_path = base_dir.path_join(display_path)
-	if not ResourceLoader.exists(full_path) and not FileAccess.file_exists(full_path):
-		if ResourceLoader.exists(display_path) or FileAccess.file_exists(display_path):
-			full_path = display_path
-		else:
-			texture_sprite.visible = false
-			stop_video_mesh(video_player_2d, video_mesh)
-			return false
-
-	var ext = full_path.get_extension().to_lower()
-	if ext in VIDEO_EXTS:
+	# 从预加载缓存中查找路径信息
+	var path_info = preloaded_paths.get(display_path)
+	if path_info == null:
+		texture_sprite.visible = false
+		stop_video_mesh(video_player_2d, video_mesh)
+		return false
+	var full_path = path_info["full_path"]
+	var ext = path_info["ext"]
+	if path_info["is_video"]:
 		texture_sprite.visible = false
 		if video_player_2d == null:
 			# 首次遇到视频纹理，按需创建视频节点
@@ -1001,7 +973,37 @@ func update_textures(line_info: Dictionary, time_sec: float, line_alpha: float, 
 		texture_sprite.pixel_size = base_ps * (length_pct / 100.0)
 		return true
 
+# 预加载路径缓存：display_path → {full_path, ext, is_video}
+var preloaded_paths: Dictionary = {}
+
+func preload_textures() -> void:
+	preloaded_textures.clear()
+	preloaded_paths.clear()
+	var rwc_path = Global.selected_rwc_path
+	var base_dir = rwc_path.get_base_dir()
+	for line_data in chart_data.get("judgeLineList", []):
+		var textures = line_data.get("textures", [])
+		for tex in textures:
+			var display_path = tex["display"]
+			if preloaded_paths.has(display_path):
+				continue
+			var full_path = base_dir.path_join(display_path)
+			if not ResourceLoader.exists(full_path) and not FileAccess.file_exists(full_path):
+				if ResourceLoader.exists(display_path) or FileAccess.file_exists(display_path):
+					full_path = display_path
+				else:
+					continue
+			var ext = full_path.get_extension().to_lower()
+			var is_video = ext in VIDEO_EXTS
+			preloaded_paths[display_path] = {"full_path": full_path, "ext": ext, "is_video": is_video}
+			if not is_video:
+				var tex_obj = load_image_fallback(full_path)
+				if tex_obj:
+					preloaded_textures[full_path] = tex_obj
+
 func load_image_fallback(path: String) -> Texture2D:
+	if preloaded_textures.has(path):
+		return preloaded_textures[path]
 	var tex = load(path)
 	if tex:
 		return tex
@@ -1019,13 +1021,13 @@ func stop_video_mesh(video_player_2d, video_mesh) -> void:
 	if video_mesh and video_mesh.visible:
 		video_mesh.visible = false
 
-func update_notes(line_info: Dictionary, time_sec: float, speed: float, notes_alpha: float, cam_pos: Vector3) -> void:
+func update_notes(line_info: Dictionary, time_sec: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
 	var current_beat = time_to_beat(time_sec)
 
 	for note_info in line_info["note_sprites"]:
 		var sprite: Sprite3D = note_info["sprite"]
 		var note_data: Dictionary = note_info["data"]
-		update_single_note(sprite, note_data, time_sec, current_beat, speed, notes_alpha, cam_pos)
+		update_single_note(sprite, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos)
 		if sprite.visible:
 			visible_note_count += 1
 
@@ -1033,11 +1035,77 @@ func update_notes(line_info: Dictionary, time_sec: float, speed: float, notes_al
 		var body: Sprite3D = hold_info["body"]
 		var head: Sprite3D = hold_info["head"]
 		var note_data: Dictionary = hold_info["data"]
-		update_hold_note(body, head, note_data, time_sec, current_beat, speed, notes_alpha, cam_pos)
+		update_hold_note(body, head, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos)
 		if body.visible:
 			visible_note_count += 1
 
-func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float, cam_pos: Vector3) -> void:
+# ========== 速度积分缓存（预计算 + 二分查找，O(log n)） ==========
+func _build_speed_cache(events: Array) -> Array:
+	"""构建速度积分缓存：[{time, cum}]，cum 为速度从 0 到 time 的积分"""
+	var cache: Array = [{"time": 0.0, "cum": 0.0}]
+	if events.is_empty():
+		return cache
+	var cum = 0.0
+	var prev_t = 0.0
+	var current_speed = 50.0  # 跟踪当前速度值，用于间隔计算
+	for ev in events:
+		if typeof(ev) != TYPE_DICTIONARY:
+			continue
+		var start_beat = fraction_to_beat(ev.get("startTime", [0, 0, 1]))
+		var end_beat = fraction_to_beat(ev.get("endTime", start_beat))
+		var start_t = beat_to_time(start_beat)
+		var end_t = beat_to_time(end_beat)
+		# 当前事件前的间隔（使用当前跟踪的速度值）
+		if start_t > prev_t:
+			cum += current_speed * (start_t - prev_t)
+			cache.append({"time": start_t, "cum": cum})
+			prev_t = start_t
+		# 事件本身
+		if end_t > start_t:
+			# 持续事件 — 梯形积分
+			var start_val = float(ev.get("start", current_speed))
+			var end_val = float(ev.get("end", start_val))
+			cum += (start_val + end_val) * (end_t - start_t) / 2.0
+			cache.append({"time": end_t, "cum": cum})
+			prev_t = end_t
+			current_speed = end_val
+		else:
+			# 瞬时事件 — 不贡献面积，但改变当前速度值
+			current_speed = float(ev.get("start", current_speed))
+	return cache
+
+func _speed_cumulative(cache: Array, events: Array, t: float) -> float:
+	"""二分查找：速度在 [0, t] 上的积分"""
+	if cache.is_empty():
+		return 50.0 * t
+	if t <= 0.0:
+		return 0.0
+	var last = cache[cache.size() - 1]
+	if t >= last["time"]:
+		# 超出缓存末尾的部分用最近的已知速度推算
+		var final_speed = 50.0
+		if not events.is_empty():
+			var last_ev = events[events.size() - 1]
+			if typeof(last_ev) == TYPE_DICTIONARY:
+				final_speed = float(last_ev.get("end", last_ev.get("start", 50.0)))
+		return last["cum"] + final_speed * (t - last["time"])
+	# 二分查找：定位到 t 所在段（cache[lo-1] → cache[lo]）
+	var lo = 0
+	var hi = cache.size() - 1
+	while lo < hi:
+		var mid = (lo + hi) / 2
+		if cache[mid]["time"] < t:
+			lo = mid + 1
+		else:
+			hi = mid
+	# lo == 0 时用 time=0 的缓存项（cache 始终有 {time:0, cum:0}）
+	var entry = cache[lo - 1] if lo > 0 else cache[0]
+	var dt = t - entry["time"]
+	if dt <= 0:
+		return entry["cum"]
+	return entry["cum"] + get_event_value_at_time(events, entry["time"] + dt / 2.0, 50.0) * dt
+
+func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
 	if note_data.get("judged", false):
 		sprite.visible = false
 		return
@@ -1057,7 +1125,7 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 
 	sprite.visible = true
 
-	var y_offset = speed * note_speed * time_diff
+	var y_offset = note_speed * (_speed_cumulative(speed_cache, speed_events, note_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
 	sprite.position = Vector3(pos_x, y_offset, 0.0)
 
 	var combined_alpha = notes_alpha * clamp(note_alpha, 0.0, 1.0)
@@ -1068,7 +1136,7 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 	base_alpha *= fog_alpha
 	sprite.modulate = Color(1, 1, 1, clamp(base_alpha, 0.0, 1.0))
 
-func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float, cam_pos: Vector3) -> void:
+func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
 	if note_data.get("hold_finalized", false):
 		body.visible = false
 		head.visible = false
@@ -1092,8 +1160,8 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 		head.visible = false
 		return
 
-	var y_start = speed * note_speed * time_diff_start
-	var y_end = speed * note_speed * time_diff_end
+	var y_start = note_speed * (_speed_cumulative(speed_cache, speed_events, start_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
+	var y_end = note_speed * (_speed_cumulative(speed_cache, speed_events, end_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
 
 	var clip_start = max(y_start, 0.0)
 	var clip_end = max(y_end, 0.0)
@@ -1146,12 +1214,23 @@ func _input(event: InputEvent) -> void:
 		elif not event.pressed:
 			_touch_indices.erase(event.index)
 
-	# 更新 is_input_active
+	# 更新 is_input_active（先更新，供后续判定使用）
 	is_input_active = (_pressed_keys.size() > 0 or _touch_indices.size() > 0)
 
-	# 有新输入时触发判定（仅按键按下和触摸按下，过滤键盘重复事件）
-	if (event is InputEventKey and event.pressed and not event.echo and not FUNCTIONAL_KEYS.has(event.keycode)) or (event is InputEventScreenTouch and event.pressed):
+	# 新按键/触摸按下 → 触发判定
+	var is_new_press = (event is InputEventKey and event.pressed and not event.echo and not FUNCTIONAL_KEYS.has(event.keycode)) \
+		or (event is InputEventScreenTouch and event.pressed)
+	if is_new_press:
+		# 先处理已过时音符的 miss
+		process_timeouts()
+		# 正常判定
 		process_input_judgment()
+		# 按住时自动 Perfect Drag
+		if is_input_active:
+			process_drag_while_held()
+	# 按键/触摸松开 → 处理 Hold 松手
+	elif (event is InputEventKey and not event.pressed) or (event is InputEventScreenTouch and not event.pressed):
+		process_hold_end_and_release()
 
 func start_playback() -> void:
 	is_playing = true

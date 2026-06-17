@@ -4,6 +4,15 @@ const HOLD_TEXTURE_HEIGHT_PX: float = 400.0
 const HOLD_SPRITE_PIXEL_SIZE: float = 0.05
 const VIDEO_EXTS: Array = ["ogv"]
 
+# 预加载纹理
+var preloaded_textures: Dictionary = {}
+var note_textures = {
+	"hold_body": preload("res://res/note/hold.png"),
+	"hold_head": preload("res://res/note/hold_head.png"),
+	"tap": preload("res://res/note/tap.png"),
+	"drag": preload("res://res/note/drag.png"),
+}
+
 var chart_data: Dictionary = {}
 var bpm_list: Array = []
 var bpm_cache: Array = []
@@ -37,6 +46,7 @@ func _ready() -> void:
 
 	load_chart_data()
 	load_audio()
+	preload_textures()
 	build_3d_scene()
 	real_notes_data.sort()
 	build_ui_labels()
@@ -261,7 +271,7 @@ func build_3d_scene() -> void:
 			if note_type == 0:
 				var hold_body = Sprite3D.new()
 				hold_body.name = "HoldBody"
-				hold_body.texture = load("res://res/note/hold.png")
+				hold_body.texture = note_textures["hold_body"]
 				hold_body.transparent = true
 				hold_body.pixel_size = 0.05
 				hold_body.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
@@ -270,7 +280,7 @@ func build_3d_scene() -> void:
 
 				var hold_head = Sprite3D.new()
 				hold_head.name = "HoldHead"
-				hold_head.texture = load("res://res/note/hold_head.png")
+				hold_head.texture = note_textures["hold_head"]
 				hold_head.transparent = true
 				hold_head.pixel_size = 0.05
 				hold_head.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
@@ -286,9 +296,9 @@ func build_3d_scene() -> void:
 				var sprite = Sprite3D.new()
 				sprite.name = "NoteSprite"
 				if note_type == 1:
-					sprite.texture = load("res://res/note/tap.png")
+					sprite.texture = note_textures["tap"]
 				elif note_type == 2:
-					sprite.texture = load("res://res/note/drag.png")
+					sprite.texture = note_textures["drag"]
 				sprite.transparent = true
 				sprite.pixel_size = 0.05
 				sprite.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
@@ -457,7 +467,7 @@ func update_shader_effects() -> void:
 	RenderingServer.set_default_clear_color(Color(bg_r, bg_g, bg_b))
 
 func update_judge_lines(time_sec: float) -> void:
-	var cam_pos = camera.global_position  # 缓存每帧只取一次
+	var cam_pos = camera.global_position # 缓存每帧只取一次
 	for line_info in judge_line_nodes:
 		var line_data = line_info["data"]
 		var line_node: Node3D = line_info["node"]
@@ -470,7 +480,8 @@ func update_judge_lines(time_sec: float) -> void:
 		var rot_y = get_event_value_at_time(get_layer_events(line_data, "rotateYEvents"), time_sec, 0.0)
 		var rot_z = get_event_value_at_time(get_layer_events(line_data, "rotateZEvents"), time_sec, 0.0)
 		var alpha = get_event_value_at_time(get_layer_events(line_data, "alphaEvents"), time_sec, 0.0)
-		var speed = get_event_value_at_time(get_layer_events(line_data, "speedEvents"), time_sec, 50.0)
+		var speed_events = get_layer_events(line_data, "speedEvents")
+		var speed_cache = _build_speed_cache(speed_events)
 		var notes_alpha = get_event_value_at_time(get_layer_events(line_data, "notesAlphaEvents"), time_sec, 255.0)
 		var line_length = get_event_value_at_time(get_layer_events(line_data, "lengthEvents"), time_sec, 200.0)
 
@@ -497,7 +508,7 @@ func update_judge_lines(time_sec: float) -> void:
 		if not has_image:
 			if name_label:
 				name_label.modulate = Color(0.6, 0.85, 1.0, 0.5 + 0.5 * line_alpha_with_fog)
-		update_notes(line_info, time_sec, speed, notes_alpha, cam_pos)
+		update_notes(line_info, time_sec, speed_events, speed_cache, notes_alpha, cam_pos)
 
 func _ensure_video_nodes(line_info: Dictionary, line_group: Node3D) -> void:
 	if line_info.get("video_initialized", false):
@@ -563,19 +574,15 @@ func update_textures(line_info: Dictionary, time_sec: float, line_alpha: float, 
 		texture_sprite.visible = false
 		stop_video_mesh(video_player_2d, video_mesh)
 		return false
-	var rwc_path = Global.selected_rwc_path
-	var base_dir = rwc_path.get_base_dir()
-	var full_path = base_dir.path_join(display_path)
-	if not ResourceLoader.exists(full_path) and not FileAccess.file_exists(full_path):
-		if ResourceLoader.exists(display_path) or FileAccess.file_exists(display_path):
-			full_path = display_path
-		else:
-			texture_sprite.visible = false
-			stop_video_mesh(video_player_2d, video_mesh)
-			return false
-
-	var ext = full_path.get_extension().to_lower()
-	if ext in VIDEO_EXTS:
+	# 从预加载缓存中查找路径信息
+	var path_info = preloaded_paths.get(display_path)
+	if path_info == null:
+		texture_sprite.visible = false
+		stop_video_mesh(video_player_2d, video_mesh)
+		return false
+	var full_path = path_info["full_path"]
+	var ext = path_info["ext"]
+	if path_info["is_video"]:
 		texture_sprite.visible = false
 		if video_player_2d == null:
 			_ensure_video_nodes(line_info, line_info["node"])
@@ -620,7 +627,37 @@ func update_textures(line_info: Dictionary, time_sec: float, line_alpha: float, 
 		texture_sprite.pixel_size = base_ps * (length_pct / 100.0)
 		return true
 
+# 预加载路径缓存：display_path → {full_path, ext, is_video}
+var preloaded_paths: Dictionary = {}
+
+func preload_textures() -> void:
+	preloaded_textures.clear()
+	preloaded_paths.clear()
+	var rwc_path = Global.selected_rwc_path
+	var base_dir = rwc_path.get_base_dir()
+	for line_data in chart_data.get("judgeLineList", []):
+		var textures = line_data.get("textures", [])
+		for tex in textures:
+			var display_path = tex["display"]
+			if preloaded_paths.has(display_path):
+				continue
+			var full_path = base_dir.path_join(display_path)
+			if not ResourceLoader.exists(full_path) and not FileAccess.file_exists(full_path):
+				if ResourceLoader.exists(display_path) or FileAccess.file_exists(display_path):
+					full_path = display_path
+				else:
+					continue
+			var ext = full_path.get_extension().to_lower()
+			var is_video = ext in VIDEO_EXTS
+			preloaded_paths[display_path] = {"full_path": full_path, "ext": ext, "is_video": is_video}
+			if not is_video:
+				var tex_obj = load_image_fallback(full_path)
+				if tex_obj:
+					preloaded_textures[full_path] = tex_obj
+
 func load_image_fallback(path: String) -> Texture2D:
+	if preloaded_textures.has(path):
+		return preloaded_textures[path]
 	var tex = load(path)
 	if tex:
 		return tex
@@ -650,13 +687,13 @@ func stop_video_mesh(video_player_2d, video_mesh) -> void:
 	if video_mesh and video_mesh.visible:
 		video_mesh.visible = false
 
-func update_notes(line_info: Dictionary, time_sec: float, speed: float, notes_alpha: float, cam_pos: Vector3) -> void:
+func update_notes(line_info: Dictionary, time_sec: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
 	var current_beat = time_to_beat(time_sec)
 
 	for note_info in line_info["note_sprites"]:
 		var sprite: Sprite3D = note_info["sprite"]
 		var note_data: Dictionary = note_info["data"]
-		update_single_note(sprite, note_data, time_sec, current_beat, speed, notes_alpha, cam_pos)
+		update_single_note(sprite, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos)
 		if sprite.visible:
 			visible_note_count += 1
 
@@ -664,11 +701,68 @@ func update_notes(line_info: Dictionary, time_sec: float, speed: float, notes_al
 		var body: Sprite3D = hold_info["body"]
 		var head: Sprite3D = hold_info["head"]
 		var note_data: Dictionary = hold_info["data"]
-		update_hold_note(body, head, note_data, time_sec, current_beat, speed, notes_alpha, cam_pos)
+		update_hold_note(body, head, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos)
 		if body.visible:
 			visible_note_count += 1
 
-func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float, cam_pos: Vector3) -> void:
+# ========== 速度积分缓存（预计算 + 二分查找） ==========
+func _build_speed_cache(events: Array) -> Array:
+	var cache: Array = [ {"time": 0.0, "cum": 0.0}]
+	if events.is_empty():
+		return cache
+	var cum = 0.0
+	var prev_t = 0.0
+	var current_speed = 50.0
+	for ev in events:
+		if typeof(ev) != TYPE_DICTIONARY:
+			continue
+		var start_beat = fraction_to_beat(ev.get("startTime", [0, 0, 1]))
+		var end_beat = fraction_to_beat(ev.get("endTime", start_beat))
+		var start_t = beat_to_time(start_beat)
+		var end_t = beat_to_time(end_beat)
+		if start_t > prev_t:
+			cum += current_speed * (start_t - prev_t)
+			cache.append({"time": start_t, "cum": cum})
+			prev_t = start_t
+		if end_t > start_t:
+			var start_val = float(ev.get("start", current_speed))
+			var end_val = float(ev.get("end", start_val))
+			cum += (start_val + end_val) * (end_t - start_t) / 2.0
+			cache.append({"time": end_t, "cum": cum})
+			prev_t = end_t
+			current_speed = end_val
+		else:
+			current_speed = float(ev.get("start", current_speed))
+	return cache
+
+func _speed_cumulative(cache: Array, events: Array, t: float) -> float:
+	if cache.is_empty():
+		return 50.0 * t
+	if t <= 0.0:
+		return 0.0
+	var last = cache[cache.size() - 1]
+	if t >= last["time"]:
+		var final_speed = 50.0
+		if not events.is_empty():
+			var last_ev = events[events.size() - 1]
+			if typeof(last_ev) == TYPE_DICTIONARY:
+				final_speed = float(last_ev.get("end", last_ev.get("start", 50.0)))
+		return last["cum"] + final_speed * (t - last["time"])
+	var lo = 0
+	var hi = cache.size() - 1
+	while lo < hi:
+		var mid = (lo + hi) / 2
+		if cache[mid]["time"] < t:
+			lo = mid + 1
+		else:
+			hi = mid
+	var entry = cache[lo - 1] if lo > 0 else cache[0]
+	var dt = t - entry["time"]
+	if dt <= 0:
+		return entry["cum"]
+	return entry["cum"] + get_event_value_at_time(events, entry["time"] + dt / 2.0, 50.0) * dt
+
+func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
 	var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
 	var note_time = beat_to_time(note_beat)
 	var pos_x = float(note_data.get("positionX", 0.0))
@@ -685,7 +779,7 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 
 	sprite.visible = true
 
-	var y_offset = speed * note_speed * time_diff
+	var y_offset = note_speed * (_speed_cumulative(speed_cache, speed_events, note_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
 	sprite.position = Vector3(pos_x, y_offset, 0.0)
 
 	var combined_alpha = notes_alpha * clamp(note_alpha, 0.0, 1.0)
@@ -696,7 +790,7 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 	base_alpha *= fog_alpha
 	sprite.modulate = Color(1, 1, 1, clamp(base_alpha, 0.0, 1.0))
 
-func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed: float, notes_alpha: float, cam_pos: Vector3) -> void:
+func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
 	var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
 	var end_beat = fraction_to_beat(note_data.get("endTime", [0, 0, 1]))
 	var start_time = beat_to_time(start_beat)
@@ -716,8 +810,8 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 		head.visible = false
 		return
 
-	var y_start = speed * note_speed * time_diff_start
-	var y_end = speed * note_speed * time_diff_end
+	var y_start = note_speed * (_speed_cumulative(speed_cache, speed_events, start_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
+	var y_end = note_speed * (_speed_cumulative(speed_cache, speed_events, end_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
 
 	var clip_start = max(y_start, 0.0)
 	var clip_end = max(y_end, 0.0)

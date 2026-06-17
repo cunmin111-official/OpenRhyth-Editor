@@ -215,74 +215,74 @@
 				{
 					"alphaEvents": [
 						{
-							"_effect_type": 6.0,
+							"_effect_type": 6,
 							"_is_continuous": true,
 							"end": 255.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"isContinuous": 1.0,
 							"start": 0.0,
 							"startTime": [
-								-4.0,
-								0.0,
-								1.0
+								-4,
+								0,
+								1
 							],
 							"type": "Linear"
 						},
 						{
-							"_effect_type": 6.0,
+							"_effect_type": 6,
 							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								145.0,
-								0.0,
-								1.0
+								145,
+								0,
+								1
 							],
 							"isContinuous": 1.0,
 							"start": 255.0,
 							"startTime": [
-								144.0,
-								0.0,
-								1.0
+								144,
+								0,
+								1
 							],
 							"type": "Linear"
 						},
 						{
-							"_effect_type": 6.0,
+							"_effect_type": 6,
 							"_is_continuous": true,
 							"end": 255.0,
 							"endTime": [
-								168.0,
-								0.0,
-								1.0
+								168,
+								0,
+								1
 							],
 							"isContinuous": 1.0,
 							"start": 0.0,
 							"startTime": [
-								167.0,
-								0.0,
-								1.0
+								167,
+								0,
+								1
 							],
 							"type": "Linear"
 						},
 						{
-							"_effect_type": 6.0,
+							"_effect_type": 6,
 							"_is_continuous": true,
 							"end": 0.0,
 							"endTime": [
-								223.0,
-								0.0,
-								1.0
+								223,
+								0,
+								1
 							],
 							"isContinuous": 1.0,
 							"start": 255.0,
 							"startTime": [
-								220.0,
-								0.0,
-								1.0
+								220,
+								0,
+								1
 							],
 							"type": "Linear"
 						}
@@ -290,38 +290,38 @@
 					"moveXEvents": [],
 					"moveYEvents": [
 						{
-							"_effect_type": 1.0,
+							"_effect_type": 1,
 							"_is_continuous": true,
 							"end": -50.0,
 							"endTime": [
-								0.0,
-								0.0,
-								1.0
+								0,
+								0,
+								1
 							],
 							"isContinuous": 1.0,
 							"start": 0.0,
 							"startTime": [
-								-4.0,
-								0.0,
-								1.0
+								-4,
+								0,
+								1
 							],
 							"type": "Linear"
 						},
 						{
-							"_effect_type": 1.0,
+							"_effect_type": 1,
 							"_is_continuous": false,
 							"end": -40.0,
 							"endTime": [
-								145.0,
-								0.0,
-								1.0
+								145,
+								0,
+								1
 							],
 							"isContinuous": 0.0,
 							"start": -40.0,
 							"startTime": [
-								145.0,
-								0.0,
-								1.0
+								145,
+								0,
+								1
 							],
 							"type": "Linear"
 						}
@@ -329,20 +329,20 @@
 					"moveZEvents": [],
 					"rotateXEvents": [
 						{
-							"_effect_type": 3.0,
+							"_effect_type": 3,
 							"_is_continuous": false,
 							"end": -30.0,
 							"endTime": [
-								163.0,
-								0.0,
-								1.0
+								163,
+								0,
+								1
 							],
 							"isContinuous": 0.0,
 							"start": -30.0,
 							"startTime": [
-								163.0,
-								0.0,
-								1.0
+								163,
+								0,
+								1
 							],
 							"type": "Linear"
 						}
@@ -351,38 +351,38 @@
 					"rotateZEvents": [],
 					"speedEvents": [
 						{
-							"_effect_type": 7.0,
+							"_effect_type": 7,
 							"_is_continuous": false,
 							"end": 50.0,
 							"endTime": [
-								-4.0,
-								0.0,
-								1.0
+								-4,
+								0,
+								1
 							],
 							"isContinuous": 0.0,
 							"start": 50.0,
 							"startTime": [
-								-4.0,
-								0.0,
-								1.0
+								-4,
+								0,
+								1
 							],
 							"type": "Linear"
 						},
 						{
-							"_effect_type": 7.0,
+							"_effect_type": 7,
 							"_is_continuous": false,
 							"end": 100.0,
 							"endTime": [
-								64.0,
+								68.0,
 								0.0,
-								1.0
+								1
 							],
 							"isContinuous": 0.0,
 							"start": 100.0,
 							"startTime": [
-								64.0,
+								68.0,
 								0.0,
-								1.0
+								1
 							],
 							"type": "Linear"
 						}
@@ -393,2528 +393,2528 @@
 				{
 					"alpha": 1.0,
 					"endTime": [
-						2.0,
-						0.0,
-						1.0
+						2,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						2.0,
-						0.0,
-						1.0
+						2,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						6.0,
-						0.0,
-						1.0
+						6,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						6.0,
-						0.0,
-						1.0
+						6,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						10.0,
-						0.0,
-						1.0
+						10,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						10.0,
-						0.0,
-						1.0
+						10,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						14.0,
-						0.0,
-						1.0
+						14,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						14.0,
-						0.0,
-						1.0
+						14,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						18.0,
-						0.0,
-						1.0
+						18,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						18.0,
-						0.0,
-						1.0
+						18,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						22.0,
-						0.0,
-						1.0
+						22,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						22.0,
-						0.0,
-						1.0
+						22,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						26.0,
-						0.0,
-						1.0
+						26,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						26.0,
-						0.0,
-						1.0
+						26,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						30.0,
-						0.0,
-						1.0
+						30,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						30.0,
-						0.0,
-						1.0
+						30,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						33.0,
-						0.0,
-						1.0
+						33,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						33.0,
-						0.0,
-						1.0
+						33,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						33.0,
-						1.0,
-						2.0
+						33,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						33.0,
-						1.0,
-						2.0
+						33,
+						1,
+						2
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						34.0,
-						0.0,
-						1.0
+						34,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						34.0,
-						0.0,
-						1.0
+						34,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						35.0,
-						0.0,
-						1.0
+						35,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						35.0,
-						0.0,
-						1.0
+						35,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						35.0,
-						1.0,
-						2.0
+						35,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						35.0,
-						1.0,
-						2.0
+						35,
+						1,
+						2
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						36.0,
-						0.0,
-						1.0
+						36,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						36.0,
-						0.0,
-						1.0
+						36,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						37.0,
-						0.0,
-						1.0
+						37,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						37.0,
-						0.0,
-						1.0
+						37,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						38.0,
-						0.0,
-						1.0
+						38,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						38.0,
-						0.0,
-						1.0
+						38,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						39.0,
-						0.0,
-						1.0
+						39,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						39.0,
-						0.0,
-						1.0
+						39,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						40.0,
-						0.0,
-						1.0
+						40,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						40.0,
-						0.0,
-						1.0
+						40,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						41.0,
-						0.0,
-						1.0
+						41,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						41.0,
-						0.0,
-						1.0
+						41,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						42.0,
-						0.0,
-						1.0
+						42,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						42.0,
-						0.0,
-						1.0
+						42,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						43.0,
-						0.0,
-						1.0
+						43,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						43.0,
-						0.0,
-						1.0
+						43,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						44.0,
-						0.0,
-						1.0
+						44,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						44.0,
-						0.0,
-						1.0
+						44,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						50.0,
-						0.0,
-						1.0
+						50,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						48.0,
-						0.0,
-						1.0
+						48,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						64.0,
-						0.0,
-						1.0
+						64,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						52.0,
-						0.0,
-						1.0
+						52,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						69.0,
-						0.0,
-						1.0
+						69,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						69.0,
-						0.0,
-						1.0
+						69,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						70.0,
-						0.0,
-						1.0
+						70,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						70.0,
-						0.0,
-						1.0
+						70,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						71.0,
-						0.0,
-						1.0
+						71,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						71.0,
-						0.0,
-						1.0
+						71,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						76.0,
-						0.0,
-						1.0
+						76,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						72.0,
-						0.0,
-						1.0
+						72,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						72.0,
-						0.0,
-						1.0
+						72,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						72.0,
-						0.0,
-						1.0
+						72,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						73.0,
-						0.0,
-						1.0
+						73,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						73.0,
-						0.0,
-						1.0
+						73,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						74.0,
-						0.0,
-						1.0
+						74,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						74.0,
-						0.0,
-						1.0
+						74,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						75.0,
-						0.0,
-						1.0
+						75,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						75.0,
-						0.0,
-						1.0
+						75,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						78.0,
-						0.0,
-						1.0
+						78,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						76.0,
-						0.0,
-						1.0
+						76,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						78.0,
-						0.0,
-						1.0
+						78,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -60.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						78.0,
-						0.0,
-						1.0
+						78,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						79.0,
-						0.0,
-						1.0
+						79,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						79.0,
-						0.0,
-						1.0
+						79,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						84.0,
-						0.0,
-						1.0
+						84,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						80.0,
-						0.0,
-						1.0
+						80,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						80.0,
-						0.0,
-						1.0
+						80,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						80.0,
-						0.0,
-						1.0
+						80,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						81.0,
-						0.0,
-						1.0
+						81,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -60.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						81.0,
-						0.0,
-						1.0
+						81,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						82.0,
-						0.0,
-						1.0
+						82,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						82.0,
-						0.0,
-						1.0
+						82,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						83.0,
-						0.0,
-						1.0
+						83,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						83.0,
-						0.0,
-						1.0
+						83,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						86.0,
-						0.0,
-						1.0
+						86,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						84.0,
-						0.0,
-						1.0
+						84,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						86.0,
-						0.0,
-						1.0
+						86,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						86.0,
-						0.0,
-						1.0
+						86,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						87.0,
-						0.0,
-						1.0
+						87,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						87.0,
-						0.0,
-						1.0
+						87,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						92.0,
-						0.0,
-						1.0
+						92,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						88.0,
-						0.0,
-						1.0
+						88,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						88.0,
-						0.0,
-						1.0
+						88,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						88.0,
-						0.0,
-						1.0
+						88,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						89.0,
-						0.0,
-						1.0
+						89,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						89.0,
-						0.0,
-						1.0
+						89,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						90.0,
-						0.0,
-						1.0
+						90,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						90.0,
-						0.0,
-						1.0
+						90,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						91.0,
-						0.0,
-						1.0
+						91,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						91.0,
-						0.0,
-						1.0
+						91,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						94.0,
-						0.0,
-						1.0
+						94,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						92.0,
-						0.0,
-						1.0
+						92,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						94.0,
-						0.0,
-						1.0
+						94,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						94.0,
-						0.0,
-						1.0
+						94,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						95.0,
-						0.0,
-						1.0
+						95,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						95.0,
-						0.0,
-						1.0
+						95,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						100.0,
-						0.0,
-						1.0
+						100,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -60.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						96.0,
-						0.0,
-						1.0
+						96,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						96.0,
-						0.0,
-						1.0
+						96,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						96.0,
-						0.0,
-						1.0
+						96,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						97.0,
-						0.0,
-						1.0
+						97,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						97.0,
-						0.0,
-						1.0
+						97,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						98.0,
-						0.0,
-						1.0
+						98,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						98.0,
-						0.0,
-						1.0
+						98,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						99.0,
-						0.0,
-						1.0
+						99,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 70.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						99.0,
-						0.0,
-						1.0
+						99,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						101.0,
-						1.0,
-						2.0
+						101,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						100.0,
-						0.0,
-						1.0
+						100,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						101.0,
-						1.0,
-						2.0
+						101,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": -60.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						101.0,
-						1.0,
-						2.0
+						101,
+						1,
+						2
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						102.0,
-						0.0,
-						1.0
+						102,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						102.0,
-						0.0,
-						1.0
+						102,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						103.0,
-						0.0,
-						1.0
+						103,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -70.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						103.0,
-						0.0,
-						1.0
+						103,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						108.0,
-						0.0,
-						1.0
+						108,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						104.0,
-						0.0,
-						1.0
+						104,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						104.0,
-						0.0,
-						1.0
+						104,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -60.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						104.0,
-						0.0,
-						1.0
+						104,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						105.0,
-						0.0,
-						1.0
+						105,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						105.0,
-						0.0,
-						1.0
+						105,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						106.0,
-						0.0,
-						1.0
+						106,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						106.0,
-						0.0,
-						1.0
+						106,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						107.0,
-						0.0,
-						1.0
+						107,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						107.0,
-						0.0,
-						1.0
+						107,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						110.0,
-						0.0,
-						1.0
+						110,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						108.0,
-						0.0,
-						1.0
+						108,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						110.0,
-						0.0,
-						1.0
+						110,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						110.0,
-						0.0,
-						1.0
+						110,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						111.0,
-						0.0,
-						1.0
+						111,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						111.0,
-						0.0,
-						1.0
+						111,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						116.0,
-						0.0,
-						1.0
+						116,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						112.0,
-						0.0,
-						1.0
+						112,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						112.0,
-						0.0,
-						1.0
+						112,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						112.0,
-						0.0,
-						1.0
+						112,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						113.0,
-						0.0,
-						1.0
+						113,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						113.0,
-						0.0,
-						1.0
+						113,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						114.0,
-						0.0,
-						1.0
+						114,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 60.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						114.0,
-						0.0,
-						1.0
+						114,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						115.0,
-						0.0,
-						1.0
+						115,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						115.0,
-						0.0,
-						1.0
+						115,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						118.0,
-						0.0,
-						1.0
+						118,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						116.0,
-						0.0,
-						1.0
+						116,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						118.0,
-						0.0,
-						1.0
+						118,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -60.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						118.0,
-						0.0,
-						1.0
+						118,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						119.0,
-						0.0,
-						1.0
+						119,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						119.0,
-						0.0,
-						1.0
+						119,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						124.0,
-						0.0,
-						1.0
+						124,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						120.0,
-						0.0,
-						1.0
+						120,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						120.0,
-						0.0,
-						1.0
+						120,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -60.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						120.0,
-						0.0,
-						1.0
+						120,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						121.0,
-						0.0,
-						1.0
+						121,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						121.0,
-						0.0,
-						1.0
+						121,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						122.0,
-						0.0,
-						1.0
+						122,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						122.0,
-						0.0,
-						1.0
+						122,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						123.0,
-						0.0,
-						1.0
+						123,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						123.0,
-						0.0,
-						1.0
+						123,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						126.0,
-						0.0,
-						1.0
+						126,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						124.0,
-						0.0,
-						1.0
+						124,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						126.0,
-						0.0,
-						1.0
+						126,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						126.0,
-						0.0,
-						1.0
+						126,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						127.0,
-						0.0,
-						1.0
+						127,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						127.0,
-						0.0,
-						1.0
+						127,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						132.0,
-						0.0,
-						1.0
+						132,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						128.0,
-						0.0,
-						1.0
+						128,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						128.0,
-						0.0,
-						1.0
+						128,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						128.0,
-						0.0,
-						1.0
+						128,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						129.0,
-						0.0,
-						1.0
+						129,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						129.0,
-						0.0,
-						1.0
+						129,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						129.0,
-						1.0,
-						2.0
+						129,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						130.0,
-						0.0,
-						1.0
+						130,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						131.0,
-						0.0,
-						1.0
+						131,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						131.0,
-						0.0,
-						1.0
+						131,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						136.0,
-						0.0,
-						1.0
+						136,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						132.0,
-						0.0,
-						1.0
+						132,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						132.0,
-						0.0,
-						1.0
+						132,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						132.0,
-						0.0,
-						1.0
+						132,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						133.0,
-						0.0,
-						1.0
+						133,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						133.0,
-						0.0,
-						1.0
+						133,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						134.0,
-						0.0,
-						1.0
+						134,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						134.0,
-						0.0,
-						1.0
+						134,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						135.0,
-						0.0,
-						1.0
+						135,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						135.0,
-						0.0,
-						1.0
+						135,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						144.0,
-						0.0,
-						1.0
+						144,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						136.0,
-						0.0,
-						1.0
+						136,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						169.0,
-						0.0,
-						1.0
+						169,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						169.0,
-						0.0,
-						1.0
+						169,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						169.0,
-						1.0,
-						2.0
+						169,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						169.0,
-						1.0,
-						2.0
+						169,
+						1,
+						2
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						170.0,
-						0.0,
-						1.0
+						170,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						170.0,
-						0.0,
-						1.0
+						170,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						173.0,
-						0.0,
-						1.0
+						173,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						173.0,
-						0.0,
-						1.0
+						173,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						173.0,
-						1.0,
-						2.0
+						173,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						173.0,
-						1.0,
-						2.0
+						173,
+						1,
+						2
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						176.0,
-						0.0,
-						1.0
+						176,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						176.0,
-						0.0,
-						1.0
+						176,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						177.0,
-						0.0,
-						1.0
+						177,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						177.0,
-						0.0,
-						1.0
+						177,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						178.0,
-						0.0,
-						1.0
+						178,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						178.0,
-						0.0,
-						1.0
+						178,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						179.0,
-						0.0,
-						1.0
+						179,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						179.0,
-						0.0,
-						1.0
+						179,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						180.0,
-						0.0,
-						1.0
+						180,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						180.0,
-						0.0,
-						1.0
+						180,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						171.0,
-						0.0,
-						1.0
+						171,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						171.0,
-						0.0,
-						1.0
+						171,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						171.0,
-						1.0,
-						2.0
+						171,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": -20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						171.0,
-						1.0,
-						2.0
+						171,
+						1,
+						2
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						172.0,
-						0.0,
-						1.0
+						172,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						172.0,
-						0.0,
-						1.0
+						172,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						174.0,
-						0.0,
-						1.0
+						174,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						174.0,
-						0.0,
-						1.0
+						174,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						175.0,
-						0.0,
-						1.0
+						175,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						175.0,
-						0.0,
-						1.0
+						175,
+						0,
+						1
 					],
-					"type": 2.0,
+					"type": 2,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						201.0,
-						0.0,
-						1.0
+						201,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						201.0,
-						0.0,
-						1.0
+						201,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						201.0,
-						1.0,
-						2.0
+						201,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": 50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						201.0,
-						1.0,
-						2.0
+						201,
+						1,
+						2
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						202.0,
-						0.0,
-						1.0
+						202,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						202.0,
-						0.0,
-						1.0
+						202,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						203.0,
-						0.0,
-						1.0
+						203,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						203.0,
-						0.0,
-						1.0
+						203,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						203.0,
-						1.0,
-						2.0
+						203,
+						1,
+						2
 					],
 					"isFake": 0.0,
 					"positionX": -10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						203.0,
-						1.0,
-						2.0
+						203,
+						1,
+						2
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						204.0,
-						0.0,
-						1.0
+						204,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						204.0,
-						0.0,
-						1.0
+						204,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						205.0,
-						0.0,
-						1.0
+						205,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						205.0,
-						0.0,
-						1.0
+						205,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						206.0,
-						0.0,
-						1.0
+						206,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 20.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						206.0,
-						0.0,
-						1.0
+						206,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						207.0,
-						0.0,
-						1.0
+						207,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						207.0,
-						0.0,
-						1.0
+						207,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						208.0,
-						0.0,
-						1.0
+						208,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						208.0,
-						0.0,
-						1.0
+						208,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						209.0,
-						0.0,
-						1.0
+						209,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						209.0,
-						0.0,
-						1.0
+						209,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						210.0,
-						0.0,
-						1.0
+						210,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						210.0,
-						0.0,
-						1.0
+						210,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						211.0,
-						0.0,
-						1.0
+						211,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 10.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						211.0,
-						0.0,
-						1.0
+						211,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						214.0,
-						0.0,
-						1.0
+						214,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 0.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						212.0,
-						0.0,
-						1.0
+						212,
+						0,
+						1
 					],
-					"type": 0.0,
+					"type": 0,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						214.0,
-						0.0,
-						1.0
+						214,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -50.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						214.0,
-						0.0,
-						1.0
+						214,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						215.0,
-						0.0,
-						1.0
+						215,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						215.0,
-						0.0,
-						1.0
+						215,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						216.0,
-						0.0,
-						1.0
+						216,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -70.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						216.0,
-						0.0,
-						1.0
+						216,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						217.0,
-						0.0,
-						1.0
+						217,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 40.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						217.0,
-						0.0,
-						1.0
+						217,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						218.0,
-						0.0,
-						1.0
+						218,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						218.0,
-						0.0,
-						1.0
+						218,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						219.0,
-						0.0,
-						1.0
+						219,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 80.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						219.0,
-						0.0,
-						1.0
+						219,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						220.0,
-						0.0,
-						1.0
+						220,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -60.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						220.0,
-						0.0,
-						1.0
+						220,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						221.0,
-						0.0,
-						1.0
+						221,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": 30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						221.0,
-						0.0,
-						1.0
+						221,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				},
 				{
 					"alpha": 1.0,
 					"endTime": [
-						222.0,
-						0.0,
-						1.0
+						222,
+						0,
+						1
 					],
 					"isFake": 0.0,
 					"positionX": -30.0,
 					"size": 1.0,
 					"speed": 1.0,
 					"startTime": [
-						222.0,
-						0.0,
-						1.0
+						222,
+						0,
+						1
 					],
-					"type": 1.0,
+					"type": 1,
 					"visibleTime": 999999.0
 				}
 			],
