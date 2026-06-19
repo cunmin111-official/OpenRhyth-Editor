@@ -640,7 +640,7 @@ func place_drag(grid_pos: Dictionary):
 		"size": 1.0,
 		"alpha": 1.0,
 		"speed": 1.0,
-		"visibleTime": 999999.0,
+		"visibleTime": 5000.0,
 		"isFake": 0
 	}
 	add_note_to_current_line(note)
@@ -661,7 +661,7 @@ func place_hold(start_beat: float, end_beat: float, posx: float):
 		"size": 1.0,
 		"alpha": 1.0,
 		"speed": 1.0,
-		"visibleTime": 999999.0,
+		"visibleTime": 5000.0,
 		"isFake": 0
 	}
 	add_note_to_current_line(note)
