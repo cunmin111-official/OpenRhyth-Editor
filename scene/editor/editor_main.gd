@@ -378,6 +378,13 @@ func sort_all_events() -> void:
 	for line in line_list:
 		if typeof(line) != TYPE_DICTIONARY:
 			continue
+		# 音符按开始节拍升序排序
+		if line.has("notes") and typeof(line["notes"]) == TYPE_ARRAY:
+			line["notes"].sort_custom(func(a, b):
+				if typeof(a) != TYPE_DICTIONARY or typeof(b) != TYPE_DICTIONARY:
+					return false
+				return _fraction_to_beat_compare(a.get("startTime", [0, 0, 1]), b.get("startTime", [0, 0, 1]))
+			)
 		var layers = line.get("eventLayers", [])
 		if layers.is_empty():
 			continue

@@ -297,6 +297,9 @@ func build_3d_scene() -> void:
 		}
 
 		var notes = line_data.get("notes", [])
+		# 确保音符按开始节拍升序（editor 可能未排序）
+		notes.sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
+		var line_max_visible: float = 0.0
 		for note_data in notes:
 			var note_type = int(note_data.get("type", 1))
 			var is_fake = float(note_data.get("isFake", 0.0))
@@ -307,6 +310,10 @@ func build_3d_scene() -> void:
 			note_data["_start_time"] = beat_to_time(start_beat)
 			note_data["_end_beat"] = end_beat
 			note_data["_end_time"] = beat_to_time(end_beat)
+			# 记录本线最大 visibleTime（毫秒→秒），决定二分查找的遍历上界
+			var note_visible_s = float(note_data.get("visibleTime", 5000.0)) / 1000.0
+			if note_visible_s > line_max_visible:
+				line_max_visible = note_visible_s
 			if is_fake == 0.0:
 				note_data["judged"] = false
 				var pass_time = note_data["_end_time"] if note_type == 0 else note_data["_start_time"]
@@ -354,6 +361,9 @@ func build_3d_scene() -> void:
 					"sprite": sprite,
 					"data": note_data
 				})
+
+		# 记录本线最大 visibleTime（秒），二分查找遍历时作为上界
+		line_info["max_visible_s"] = line_max_visible
 
 		judge_line_nodes.append(line_info)
 
@@ -794,7 +804,6 @@ func _process(delta: float) -> void:
 			var playing = vp and vp.is_playing()
 			var tex = mat.albedo_texture if mat else null
 			video_debug = "Vplay=%s tex=%s" % [playing, tex != null]
-	info_label.text = "节拍: %.3f  FPS: %d  Notes: %d  %s" % [current_beat, fps, visible_note_count, video_debug]
 
 	# 更新输入调试信息
 	_input_debug_label.text = "Keys: %d (new: %d)  Touch: %d (new: %d)  JudgeErr: %+.1fms" % [
@@ -837,6 +846,9 @@ func _process(delta: float) -> void:
 	# Hold 结束时间到达时自动结算（仅检查活跃 Hold，开销极小）
 	if hold_pending_list.size() > 0:
 		process_hold_end_and_release()
+
+	# 在 update_judge_lines 之后使用 visible_note_count（此时已由 update_notes 递增完毕）
+	info_label.text = "节拍: %.3f  FPS: %d  Notes: %d  %s" % [current_beat, fps, visible_note_count, video_debug]
 
 func update_shader_effects() -> void:
 	var shader = chart_data.get("Shader", {})
@@ -1059,22 +1071,55 @@ func stop_video_mesh(video_player_2d, video_mesh) -> void:
 		video_mesh.visible = false
 
 func update_notes(line_info: Dictionary, time_sec: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
-	var current_beat = time_to_beat(time_sec)
-
+	# 每帧先清空所有音符，后续只对可见范围内的设为可见（避免 skip 的音符残留上一帧状态）
 	for note_info in line_info["note_sprites"]:
-		var sprite: Sprite3D = note_info["sprite"]
+		note_info["sprite"].visible = false
+	for hold_info in line_info["hold_bodies"]:
+		hold_info["body"].visible = false
+		hold_info["head"].visible = false
+
+	var current_beat = time_to_beat(time_sec)
+	var max_visible_s = line_info.get("max_visible_s", 5.0)
+
+	var note_sprites: Array = line_info["note_sprites"]
+	# 二分查找起始位置：往前 5 拍缓冲（确保 miss 判定来得及触发）
+	var start_idx = _bisect_left_note_list(note_sprites, current_beat - 5.0)
+	for i in range(start_idx, note_sprites.size()):
+		var note_info: Dictionary = note_sprites[i]
 		var note_data: Dictionary = note_info["data"]
+		# 超出最大可见时间（秒）→ 后续节拍更大，必定更远，直接 break
+		if note_data["_start_time"] - time_sec > max_visible_s:
+			break
+		var sprite: Sprite3D = note_info["sprite"]
 		update_single_note(sprite, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos)
 		if sprite.visible:
 			visible_note_count += 1
 
-	for hold_info in line_info["hold_bodies"]:
+	var hold_bodies: Array = line_info["hold_bodies"]
+	# Hold 的可见性由 endTime 决定（start 可能很早但 end 还在未来），不从二分查找 skip
+	for i in range(0, hold_bodies.size()):
+		var hold_info: Dictionary = hold_bodies[i]
+		var note_data: Dictionary = hold_info["data"]
+		# start 还太远才 break（end 一定更远，后续必定都不可见）
+		if note_data["_start_time"] - time_sec > max_visible_s:
+			break
 		var body: Sprite3D = hold_info["body"]
 		var head: Sprite3D = hold_info["head"]
-		var note_data: Dictionary = hold_info["data"]
 		update_hold_note(body, head, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos)
 		if body.visible:
 			visible_note_count += 1
+
+# 二分查找：在 note_sprite / hold_body 的 data._start_beat 数组中找第一个 >= beat 的索引
+static func _bisect_left_note_list(list: Array, beat: float) -> int:
+	var lo = 0
+	var hi = list.size()
+	while lo < hi:
+		var mid = (lo + hi) / 2
+		if list[mid]["data"]["_start_beat"] < beat:
+			lo = mid + 1
+		else:
+			hi = mid
+	return lo
 
 # ========== 速度积分缓存（预计算 + 二分查找，O(log n)） ==========
 func _build_speed_cache(events: Array) -> Array:
@@ -1148,10 +1193,8 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 		return
 	var note_beat = note_data["_start_beat"]
 	var note_time = note_data["_start_time"]
-	var pos_x = float(note_data.get("positionX", 0.0))
-	var note_alpha = float(note_data.get("alpha", 1.0))
-	var visible_time = float(note_data.get("visibleTime", 5.0))
-	var note_speed = float(note_data.get("speed", 10.0))
+	# visibleTime 单位为毫秒，转为秒
+	var visible_time_s = float(note_data.get("visibleTime", 5000.0)) / 1000.0
 
 	# 同步判定：Note 已过判定窗口仍未判定 → miss（不依赖按键触发）
 	var note_type = int(note_data.get("type", 1))
@@ -1164,15 +1207,20 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 	var time_diff = note_time - time_sec
 	var beat_diff = note_beat - current_beat
 
-	if beat_diff > visible_time or time_diff < 0:
+	# 超出可见时间范围（以秒为单位）或已过时 → 隐藏
+	if time_diff > visible_time_s or time_diff < 0:
 		sprite.visible = false
 		return
 
+	# 可见范围内才计算位置/透明度（节省 speed_cumulative 等开销）
 	sprite.visible = true
+	var pos_x = float(note_data.get("positionX", 0.0))
+	var note_speed = float(note_data.get("speed", 10.0))
 
 	var y_offset = note_speed * (_speed_cumulative(speed_cache, speed_events, note_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
 	sprite.position = Vector3(pos_x, y_offset, 0.0)
 
+	var note_alpha = float(note_data.get("alpha", 1.0))
 	var combined_alpha = notes_alpha * clamp(note_alpha, 0.0, 1.0)
 	var base_alpha = combined_alpha / 255.0
 	var fog_distance = max(current_fog * 10.0, 1.0)
@@ -1189,24 +1237,26 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 	var start_beat = note_data["_start_beat"]
 	var start_time = note_data["_start_time"]
 	var end_time = note_data["_end_time"]
-	var pos_x = float(note_data.get("positionX", 0.0))
-	var note_alpha = float(note_data.get("alpha", 1.0))
-	var visible_time = float(note_data.get("visibleTime", 5.0))
-
-	var note_speed = float(note_data.get("speed", 10.0))
+	# visibleTime 单位为毫秒，转为秒
+	var visible_time_s = float(note_data.get("visibleTime", 5000.0)) / 1000.0
 
 	# 同步判定：Hold 起始已过判定窗口仍未判定 → miss（不依赖按键触发）
 	if not note_data.get("judged", false) and time_sec > start_time + 0.2:
 		auto_judge_miss(note_data)
 
-	var beat_diff = start_beat - current_beat
 	var time_diff_start = start_time - time_sec
 	var time_diff_end = end_time - time_sec
 
-	if beat_diff > visible_time:
+	# Hold 的可见性：start 还太远（整体不可见）→ 隐藏；end 已过时（已结束）→ 隐藏
+	if time_diff_start > visible_time_s or time_diff_end < 0:
 		body.visible = false
 		head.visible = false
 		return
+
+	# 可见范围内才计算位置/透明度
+	var pos_x = float(note_data.get("positionX", 0.0))
+	var note_speed = float(note_data.get("speed", 10.0))
+	var note_alpha = float(note_data.get("alpha", 1.0))
 
 	var y_start = note_speed * (_speed_cumulative(speed_cache, speed_events, start_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
 	var y_end = note_speed * (_speed_cumulative(speed_cache, speed_events, end_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
@@ -1225,9 +1275,9 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 
 	if time_diff_start > 0:
 		head.visible = true
+		head.position = Vector3(pos_x, y_start, 0.0)
 	else:
 		head.visible = false
-	head.position = Vector3(pos_x, y_start, 0.0)
 
 	var combined_alpha = notes_alpha * clamp(note_alpha, 0.0, 1.0)
 	var base_alpha = combined_alpha / 255.0
