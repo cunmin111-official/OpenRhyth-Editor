@@ -72,6 +72,7 @@ func _ready() -> void:
 	load_audio()
 	preload_textures()
 	build_3d_scene()
+	_init_effect_pool()
 	real_notes_data.sort()
 	build_ui_labels()
 	bind_video_textures.call_deferred()
@@ -199,6 +200,8 @@ func load_chart_data() -> void:
 		var arr = chart_data["Shader"][shader_key]
 		if arr.size() > 1:
 			arr.sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
+		# 预计算 Shader 事件时间（静态，避免每帧重复换算）
+		_annotate_event_times(arr)
 
 	print("[游玩] 谱面加载完成, BPM段数: ", bpm_list.size(), " 判定线数: ", chart_data["judgeLineList"].size())
 
@@ -297,14 +300,16 @@ func build_3d_scene() -> void:
 		for note_data in notes:
 			var note_type = int(note_data.get("type", 1))
 			var is_fake = float(note_data.get("isFake", 0.0))
+			# 预计算音符节拍/时间（静态，避免每帧重复 fraction_to_beat + 二分查找）
+			var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+			var end_beat = fraction_to_beat(note_data.get("endTime", [0, 0, 1]))
+			note_data["_start_beat"] = start_beat
+			note_data["_start_time"] = beat_to_time(start_beat)
+			note_data["_end_beat"] = end_beat
+			note_data["_end_time"] = beat_to_time(end_beat)
 			if is_fake == 0.0:
 				note_data["judged"] = false
-				var pass_beat: float
-				if note_type == 0:
-					pass_beat = fraction_to_beat(note_data.get("endTime", [0, 0, 1]))
-				else:
-					pass_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-				var pass_time = beat_to_time(pass_beat)
+				var pass_time = note_data["_end_time"] if note_type == 0 else note_data["_start_time"]
 				real_notes_data.append(pass_time)
 				total_real_count += 1
 
@@ -357,14 +362,17 @@ func build_3d_scene() -> void:
 	var line_event_keys = ["alphaEvents", "moveXEvents", "moveYEvents", "moveZEvents", "rotateXEvents", "rotateYEvents", "rotateZEvents", "speedEvents", "notesAlphaEvents", "lengthEvents"]
 	for line_info in judge_line_nodes:
 		var layers = line_info["data"].get("eventLayers", [])
-		if layers.is_empty():
-			continue
-		var layer = layers[0]
-		if typeof(layer) != TYPE_DICTIONARY:
-			continue
-		for key in line_event_keys:
-			if layer.has(key) and typeof(layer[key]) == TYPE_ARRAY and layer[key].size() > 1:
-				layer[key].sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
+		if not layers.is_empty():
+			var layer = layers[0]
+			if typeof(layer) == TYPE_DICTIONARY:
+				for key in line_event_keys:
+					if layer.has(key) and typeof(layer[key]) == TYPE_ARRAY:
+						if layer[key].size() > 1:
+							layer[key].sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
+						# 预计算事件时间（静态，避免每帧重复换算）
+						_annotate_event_times(layer[key])
+		# 预计算速度积分缓存（速度事件静态，整局只需构建一次，避免每帧每线重建）
+		line_info["speed_cache"] = _build_speed_cache(get_layer_events(line_info["data"], "speedEvents"))
 
 	print("[游玩] 3D场景构建完成")
 
@@ -416,6 +424,15 @@ func eval_expression(expr_str: String, x_val: float) -> float:
 		return 0.0
 	return float(result)
 
+# 预计算事件的起止时间（秒），标注到事件字典上：_st / _et
+# 事件时间静态不变，预计算后 get_event_value_at_time 可省去每次的二分查找
+func _annotate_event_times(events: Array) -> void:
+	for ev in events:
+		if typeof(ev) != TYPE_DICTIONARY:
+			continue
+		ev["_st"] = beat_to_time(fraction_to_beat(ev.get("startTime", [0, 0, 1])))
+		ev["_et"] = beat_to_time(fraction_to_beat(ev.get("endTime", [0, 0, 1])))
+
 func get_event_value_at_time(events: Array, time_sec: float, default_value: float) -> float:
 	if events.is_empty():
 		return default_value
@@ -423,16 +440,20 @@ func get_event_value_at_time(events: Array, time_sec: float, default_value: floa
 	for ev in events:
 		if typeof(ev) != TYPE_DICTIONARY:
 			continue
-		var start_beat = fraction_to_beat(ev.get("startTime", [0, 0, 1]))
-		var end_beat = fraction_to_beat(ev.get("endTime", [0, 0, 1]))
-		var start_time = beat_to_time(start_beat)
-		var end_time = beat_to_time(end_beat)
+		# 优先使用预标注的时间，未标注时回退到即时换算
+		var start_time = ev.get("_st")
+		var end_time
+		if start_time == null:
+			start_time = beat_to_time(fraction_to_beat(ev.get("startTime", [0, 0, 1])))
+			end_time = beat_to_time(fraction_to_beat(ev.get("endTime", [0, 0, 1])))
+		else:
+			end_time = ev["_et"]
 		var start_val = float(ev.get("start", default_value))
 		var end_val = float(ev.get("end", default_value))
 		var ev_type = str(ev.get("type", "Linear"))
 		if time_sec < start_time:
 			break
-		if start_beat == end_beat or abs(start_time - end_time) < 0.0001:
+		if abs(start_time - end_time) < 0.0001:
 			last_value = start_val
 			continue
 		if time_sec >= start_time and time_sec <= end_time:
@@ -458,12 +479,8 @@ func get_layer_events(line_data: Dictionary, event_key: String) -> Array:
 
 func judge_single_note(note_data: Dictionary, input_time: float) -> String:
 	var note_type = int(note_data.get("type", 1))
-	var target_beat
-	if note_type == 0:
-		target_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-	else:
-		target_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-	var target_time = beat_to_time(target_beat)
+	# Tap/Hold/Drag 判定均以 startTime 为基准（预计算缓存）
+	var target_time = note_data["_start_time"]
 	var diff = input_time - target_time # seconds
 	
 	# 记录判定误差（用于调试显示）
@@ -526,30 +543,56 @@ func auto_judge_miss(note_data: Dictionary) -> void:
 		max_combo = combo
 	has_new_judgment = true
 
+# ========== 判定特效对象池（提前创建，运行时复用，避免频繁 new/queue_free） ==========
+const EFFECT_POOL_SIZE: int = 32
+var _effect_pool: Array = [] # 空闲可复用的特效 Sprite3D
+
+func _init_effect_pool() -> void:
+	for i in range(EFFECT_POOL_SIZE):
+		_effect_pool.append(_new_effect_sprite())
+
+func _new_effect_sprite() -> Sprite3D:
+	var sprite = Sprite3D.new()
+	sprite.transparent = true
+	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	sprite.pixel_size = 0.05
+	sprite.visible = false
+	world_3d.add_child(sprite)
+	return sprite
+
+func _acquire_effect_sprite() -> Sprite3D:
+	if _effect_pool.is_empty():
+		# 池耗尽时按需扩容（极端高密度判定下的兜底）
+		return _new_effect_sprite()
+	return _effect_pool.pop_back()
+
+func _release_effect_sprite(sprite: Sprite3D) -> void:
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	sprite.visible = false
+	_effect_pool.append(sprite)
+
 func spawn_judge_effect(world_pos: Vector3, grade: String, for_hold: bool = false) -> Sprite3D:
 	if grade == "" or grade == "miss":
 		return null
 	var tex = judge_textures.get(grade)
 	if tex == null:
 		return null
-	
-	var sprite = Sprite3D.new()
+
+	var sprite = _acquire_effect_sprite()
 	sprite.texture = tex
-	sprite.transparent = true
-	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-	sprite.pixel_size = 0.05
 	sprite.position = world_pos
 	sprite.modulate = Color(1, 1, 1, 1.0)
-	world_3d.add_child(sprite)
-	
+	sprite.visible = true
+
 	if for_hold:
 		# Hold 特效暂不渐隐，由 process_hold_judgment 控制生命周期
 		return sprite
-	
-	# 普通 Tap/Drag 特效：立即渐隐 0.5 秒
+
+	# 普通 Tap/Drag 特效：立即渐隐 0.5 秒，结束后归还对象池
 	var tween = create_tween()
 	tween.tween_property(sprite, "modulate", Color(1, 1, 1, 0.0), 0.5)
-	tween.tween_callback(sprite.queue_free)
+	tween.tween_callback(_release_effect_sprite.bind(sprite))
 	return sprite
 
 func fade_hold_effect(sprite: Sprite3D) -> void:
@@ -557,7 +600,7 @@ func fade_hold_effect(sprite: Sprite3D) -> void:
 		return
 	var tween = create_tween()
 	tween.tween_property(sprite, "modulate", Color(1, 1, 1, 0.0), 0.5)
-	tween.tween_callback(sprite.queue_free)
+	tween.tween_callback(_release_effect_sprite.bind(sprite))
 
 func process_input_judgment() -> void:
 	if not is_playing:
@@ -578,8 +621,7 @@ func process_input_judgment() -> void:
 			if note_data.get("judged", false):
 				continue
 			var note_type = int(note_data.get("type", 1))
-			var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-			var note_time = beat_to_time(note_beat)
+			var note_time = note_data["_start_time"]
 			var diff = current_time - note_time
 
 			var in_window = false
@@ -600,8 +642,7 @@ func process_input_judgment() -> void:
 			var note_data = hold_info["data"]
 			if note_data.get("judged", false):
 				continue
-			var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-			var start_time = beat_to_time(start_beat)
+			var start_time = note_data["_start_time"]
 			var diff = current_time - start_time
 
 			if diff >= -0.2 and diff <= 0.2 and start_time < earliest_time:
@@ -621,8 +662,7 @@ func process_input_judgment() -> void:
 			
 			if earliest_type == 0:
 				# Hold: store grade but defer scoring
-				var end_beat = fraction_to_beat(earliest_note.get("endTime", [0, 0, 1]))
-				var end_time = beat_to_time(end_beat)
+				var end_time = earliest_note["_end_time"]
 				var effect_sprite = spawn_judge_effect(effect_pos, grade, true)
 				hold_pending_list.append({
 					"data": earliest_note,
@@ -648,8 +688,7 @@ func process_timeouts() -> void:
 			if note_data.get("judged", false):
 				continue
 			var note_type = int(note_data.get("type", 1))
-			var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-			var note_time = beat_to_time(note_beat)
+			var note_time = note_data["_start_time"]
 			var window_end = 0.2 if note_type == 1 else 0.05
 			if current_time > note_time + window_end:
 				auto_judge_miss(note_data)
@@ -658,8 +697,7 @@ func process_timeouts() -> void:
 			var note_data = hold_info["data"]
 			if note_data.get("judged", false):
 				continue
-			var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-			var start_time = beat_to_time(start_beat)
+			var start_time = note_data["_start_time"]
 			if current_time > start_time + 0.2:
 				auto_judge_miss(note_data)
 
@@ -673,8 +711,7 @@ func process_drag_while_held() -> void:
 			var note_type = int(note_data.get("type", 1))
 			if note_type != 2:
 				continue
-			var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-			var note_time = beat_to_time(note_beat)
+			var note_time = note_data["_start_time"]
 			var diff = current_time - note_time
 			if diff >= 0.0 and diff <= 0.05:
 				last_judge_error_ms = 0.0
@@ -825,8 +862,8 @@ func update_judge_lines(time_sec: float) -> void:
 		var rot_z = get_event_value_at_time(get_layer_events(line_data, "rotateZEvents"), time_sec, 0.0)
 		var alpha = get_event_value_at_time(get_layer_events(line_data, "alphaEvents"), time_sec, 0.0)
 		var speed_events = get_layer_events(line_data, "speedEvents")
-		# 预计算速度积分缓存（每条线每帧一次，避免每个音符都 O(n²) 扫描）
-		var speed_cache = _build_speed_cache(speed_events)
+		# 速度积分缓存在 build_3d_scene 中已构建一次（速度事件静态），此处直接复用
+		var speed_cache = line_info["speed_cache"]
 		var notes_alpha = get_event_value_at_time(get_layer_events(line_data, "notesAlphaEvents"), time_sec, 255.0)
 		var line_length = get_event_value_at_time(get_layer_events(line_data, "lengthEvents"), time_sec, 200.0)
 
@@ -1109,12 +1146,20 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 	if note_data.get("judged", false):
 		sprite.visible = false
 		return
-	var note_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-	var note_time = beat_to_time(note_beat)
+	var note_beat = note_data["_start_beat"]
+	var note_time = note_data["_start_time"]
 	var pos_x = float(note_data.get("positionX", 0.0))
 	var note_alpha = float(note_data.get("alpha", 1.0))
 	var visible_time = float(note_data.get("visibleTime", 5.0))
 	var note_speed = float(note_data.get("speed", 10.0))
+
+	# 同步判定：Note 已过判定窗口仍未判定 → miss（不依赖按键触发）
+	var note_type = int(note_data.get("type", 1))
+	var window_end = 0.2 if note_type == 1 else 0.05
+	if time_sec > note_time + window_end:
+		auto_judge_miss(note_data)
+		sprite.visible = false
+		return
 
 	var time_diff = note_time - time_sec
 	var beat_diff = note_beat - current_beat
@@ -1141,15 +1186,18 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 		body.visible = false
 		head.visible = false
 		return
-	var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-	var end_beat = fraction_to_beat(note_data.get("endTime", [0, 0, 1]))
-	var start_time = beat_to_time(start_beat)
-	var end_time = beat_to_time(end_beat)
+	var start_beat = note_data["_start_beat"]
+	var start_time = note_data["_start_time"]
+	var end_time = note_data["_end_time"]
 	var pos_x = float(note_data.get("positionX", 0.0))
 	var note_alpha = float(note_data.get("alpha", 1.0))
 	var visible_time = float(note_data.get("visibleTime", 5.0))
 
 	var note_speed = float(note_data.get("speed", 10.0))
+
+	# 同步判定：Hold 起始已过判定窗口仍未判定 → miss（不依赖按键触发）
+	if not note_data.get("judged", false) and time_sec > start_time + 0.2:
+		auto_judge_miss(note_data)
 
 	var beat_diff = start_beat - current_beat
 	var time_diff_start = start_time - time_sec

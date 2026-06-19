@@ -66,12 +66,13 @@ var chart_data: Dictionary = {}
 var current_rwc_path: String = ""
 
 # 网格设置
+const ALLOWED_SUBDIVISIONS := [1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 24, 32]  # 允许的节拍细分分母
 var subdivision: int = 1          # 节拍细分分母（1,2,3,...32）
 var pixels_per_second: float = 500.0  # 像素密度
 
 func _ready():
-	# 加载等宽字体并应用到所有 LineEdit 和 TextEdit
-	var mono_font = load("res://res/fonts/LXGWWenKaiMono-Regular.ttf")
+	# 复用 Global 中已 preload 的等宽字体，避免重复运行时加载
+	var mono_font = Global.mono_font
 	if mono_font:
 		_apply_font_to_edit_controls(self, mono_font)
 	
@@ -562,7 +563,7 @@ func _input(event: InputEvent):
 			if event.keycode == KEY_UP and not event.ctrl_pressed:
 				# 增大细分分母（更密）
 				var new_sub = subdivision + 1
-				var allowed = [1,2,3,4,5,6,7,8,12,16,24,32]
+				var allowed = ALLOWED_SUBDIVISIONS
 				if new_sub in allowed:
 					subdivision = new_sub
 				elif new_sub > 32:
@@ -577,7 +578,7 @@ func _input(event: InputEvent):
 				get_viewport().set_input_as_handled()
 			elif event.keycode == KEY_DOWN and not event.ctrl_pressed:
 				var new_sub = subdivision - 1
-				var allowed = [1,2,3,4,5,6,7,8,12,16,24,32]
+				var allowed = ALLOWED_SUBDIVISIONS
 				if new_sub in allowed:
 					subdivision = new_sub
 				elif new_sub < 1:
@@ -806,17 +807,22 @@ func _on_duration_changed(new_text: String):
 		chart_data["META"]["duration"] = 0.0
 	mark_unsaved()
 
+var _last_beats_text: String = ""
+var _last_time_text: String = ""
+
 func update_info_display():
+	var beats_text: String
+	var time_text: String
 	if current_mode == EditMode.META:
 		var duration = chart_data.get("META", {}).get("duration", 0.0)
 		var total_beat = 0.0
 		if duration > 0 and notes_edit_panel:
 			total_beat = notes_edit_panel.time_to_beat(duration)
-		beats_display.text = "总计 %.3f" % total_beat
+		beats_text = "总计 %.3f" % total_beat
 		var minutes = floor(duration / 60)
 		var seconds = int(duration) % 60
 		var millis = floor((duration - floor(duration)) * 1000)
-		time_display.text = "%d:%02d.%03d" % [minutes, seconds, millis]
+		time_text = "%d:%02d.%03d" % [minutes, seconds, millis]
 	else:
 		var current_time = 0.0
 		var current_beat = 0.0
@@ -832,12 +838,20 @@ func update_info_display():
 		else:
 			current_time = 0.0
 			current_beat = 0.0
-		
-		beats_display.text = "当前 %.3f" % current_beat
+
+		beats_text = "当前 %.3f" % current_beat
 		var minutes = floor(current_time / 60)
 		var seconds = int(current_time) % 60
 		var millis = floor((current_time - floor(current_time)) * 1000)
-		time_display.text = "%d:%02d.%03d" % [minutes, seconds, millis]
+		time_text = "%d:%02d.%03d" % [minutes, seconds, millis]
+
+	# 仅在文本变化时写入，避免每帧无谓的 Label 赋值
+	if beats_text != _last_beats_text:
+		beats_display.text = beats_text
+		_last_beats_text = beats_text
+	if time_text != _last_time_text:
+		time_display.text = time_text
+		_last_time_text = time_text
 
 func fix_chart_data_integers():
 	# 修复所有判定线中的音符

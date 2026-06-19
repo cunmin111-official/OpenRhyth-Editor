@@ -97,10 +97,11 @@ static func _fraction_to_beat(fraction: Array) -> float:
 		denominator = 1.0
 	return integer + numerator / denominator
 
+const MONO_FONT_RES = preload("res://res/fonts/LXGWWenKaiMono-Regular.ttf")
+
 func _ready() -> void:
-	var font = load("res://res/fonts/LXGWWenKaiMono-Regular.ttf")
-	if font:
-		mono_font = font
+	# 等宽字体改为编译期 preload（路径错误编译期即暴露，避免运行时 IO）
+	mono_font = MONO_FONT_RES
 
 # 全局快捷键
 func _input(event: InputEvent) -> void:
