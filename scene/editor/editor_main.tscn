@@ -133,11 +133,18 @@ offset_right = 230.0
 offset_bottom = 1043.0
 text = "上次保存于 2026/4/1 11:45:14"
 
-[node name="MetaDisplay" type="Label" parent="CanvasLayer" unique_id=591081391]
+[node name="AutoSavedAt" type="Label" parent="CanvasLayer" unique_id=327295773]
 offset_left = 10.0
 offset_top = 1040.0
-offset_right = 160.0
-offset_bottom = 1063.0
+offset_right = 400.0
+offset_bottom = 1060.0
+text = "自动保存于 2026/4/1 11:45:14"
+
+[node name="MetaDisplay" type="Label" parent="CanvasLayer" unique_id=591081391]
+offset_left = 10.0
+offset_top = 1060.0
+offset_right = 168.0
+offset_bottom = 1083.0
 text = "2221 物量 2184 动效"
 
 [node name="EditArea" type="Node2D" parent="CanvasLayer" unique_id=510727928]

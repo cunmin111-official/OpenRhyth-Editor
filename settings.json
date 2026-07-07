@@ -1,0 +1,188 @@
+{
+	"auto_save": {
+		"enabled": true,
+		"interval_minutes": 1.0
+	},
+	"calibration": {
+		"audio_offset_ms": 0.0,
+		"judge_offset_ms": 0.0
+	},
+	"shortcuts": {
+		"editor": {
+			"decrease_pixels": {
+				"key": 4194322.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"decrease_subdivision": {
+				"key": 4194322.0,
+				"mod_alt": false,
+				"mod_ctrl": false,
+				"mod_shift": false
+			},
+			"fix_integers": {
+				"key": 70.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"increase_pixels": {
+				"key": 4194320.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"increase_subdivision": {
+				"key": 4194320.0,
+				"mod_alt": false,
+				"mod_ctrl": false,
+				"mod_shift": false
+			},
+			"save": {
+				"key": 83.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"start_preview": {
+				"key": 32.0,
+				"mod_alt": false,
+				"mod_ctrl": false,
+				"mod_shift": false
+			}
+		},
+		"effects_edit": {
+			"browse_mode": {
+				"key": 32.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"continuous_mode": {
+				"key": 48.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"delete_selected": {
+				"key": 4194312.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"fix_format": {
+				"key": 70.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": true
+			},
+			"instant_mode": {
+				"key": 49.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"shift_down": {
+				"key": 4194322.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": true
+			},
+			"shift_up": {
+				"key": 4194320.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": true
+			}
+		},
+		"global": {
+			"toggle_fullscreen": {
+				"key": 4194342.0,
+				"mod_alt": false,
+				"mod_ctrl": false,
+				"mod_shift": false
+			}
+		},
+		"notes_edit": {
+			"delete_selected": {
+				"key": 4194312.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"move_down": {
+				"key": 4194322.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": true
+			},
+			"move_up": {
+				"key": 4194320.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": true
+			}
+		},
+		"play": {
+			"return_menu": {
+				"key": 4194305.0,
+				"mod_alt": false,
+				"mod_ctrl": false,
+				"mod_shift": false
+			}
+		},
+		"preview": {
+			"play_pause": {
+				"key": 32.0,
+				"mod_alt": false,
+				"mod_ctrl": false,
+				"mod_shift": false
+			},
+			"return_editor": {
+				"key": 4194305.0,
+				"mod_alt": false,
+				"mod_ctrl": false,
+				"mod_shift": false
+			}
+		},
+		"shader_edit": {
+			"browse_mode": {
+				"key": 32.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"continuous_mode": {
+				"key": 48.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"delete_selected": {
+				"key": 4194312.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"instant_mode": {
+				"key": 49.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"shift_down": {
+				"key": 4194322.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": true
+			},
+			"shift_up": {
+				"key": 4194320.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": true
+			}
+		}
+	}
+}

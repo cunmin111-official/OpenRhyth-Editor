@@ -346,12 +346,12 @@ func _on_playback_timer_timeout():
 
 func _input(event: InputEvent):
 	if visible and event is InputEventKey and event.pressed and not event.echo:
-		if event.ctrl_pressed and event.shift_pressed and event.keycode == KEY_F:
+		if Global.is_shortcut_match(event, "effects_edit", "fix_format"):
 			fix_events_format()
 			get_viewport().set_input_as_handled()
 			return
 		
-		if event.ctrl_pressed and event.keycode == KEY_DELETE:
+		if Global.is_shortcut_match(event, "effects_edit", "delete_selected"):
 			if selected_events.size() > 0:
 				for ev in selected_events:
 					remove_event_from_data(ev)
@@ -364,58 +364,56 @@ func _input(event: InputEvent):
 		
 		if event.ctrl_pressed and event.shift_pressed:
 			var step_beat = 1.0 / subdivision
-			match event.keycode:
-				KEY_UP:
-					for ev in selected_events:
-						var beat = fraction_to_beat(ev["startTime"])
-						beat += step_beat
-						ev["startTime"] = beat_to_fraction(beat)
-						if ev.has("endTime"):
-							var end_beat = fraction_to_beat(ev["endTime"])
-							end_beat += step_beat
-							ev["endTime"] = beat_to_fraction(end_beat)
-					queue_redraw()
-					effect_data_changed.emit()
-					get_viewport().set_input_as_handled()
-				KEY_DOWN:
-					for ev in selected_events:
-						var beat = fraction_to_beat(ev["startTime"])
-						beat -= step_beat
-						ev["startTime"] = beat_to_fraction(beat)
-						if ev.has("endTime"):
-							var end_beat = fraction_to_beat(ev["endTime"])
-							end_beat -= step_beat
-							ev["endTime"] = beat_to_fraction(end_beat)
-					queue_redraw()
-					effect_data_changed.emit()
-					get_viewport().set_input_as_handled()
-				KEY_LEFT, KEY_RIGHT:
-					pass
+			if Global.is_shortcut_match(event, "effects_edit", "shift_up"):
+				for ev in selected_events:
+					var beat = fraction_to_beat(ev["startTime"])
+					beat += step_beat
+					ev["startTime"] = beat_to_fraction(beat)
+					if ev.has("endTime"):
+						var end_beat = fraction_to_beat(ev["endTime"])
+						end_beat += step_beat
+						ev["endTime"] = beat_to_fraction(end_beat)
+				queue_redraw()
+				effect_data_changed.emit()
+				get_viewport().set_input_as_handled()
+			elif Global.is_shortcut_match(event, "effects_edit", "shift_down"):
+				for ev in selected_events:
+					var beat = fraction_to_beat(ev["startTime"])
+					beat -= step_beat
+					ev["startTime"] = beat_to_fraction(beat)
+					if ev.has("endTime"):
+						var end_beat = fraction_to_beat(ev["endTime"])
+						end_beat -= step_beat
+						ev["endTime"] = beat_to_fraction(end_beat)
+				queue_redraw()
+				effect_data_changed.emit()
+				get_viewport().set_input_as_handled()
+			elif event.keycode == KEY_LEFT or event.keycode == KEY_RIGHT:
+				pass
 			return
 		
 		match event.keycode:
 			KEY_LEFT, KEY_RIGHT:
 				pass
 		if event.ctrl_pressed:
-			match event.keycode:
-				KEY_0:
-					current_place_mode = PlaceMode.CONTINUOUS
-					is_placing_continuous = false
-					print("放置模式: 持续动效")
-					queue_redraw()
-					get_viewport().set_input_as_handled()
-				KEY_1:
-					current_place_mode = PlaceMode.INSTANT
-					is_placing_continuous = false
-					print("放置模式: 瞬时动效")
-					queue_redraw()
-					get_viewport().set_input_as_handled()
-				KEY_SPACE:
-					current_place_mode = PlaceMode.BROWSE
-					is_placing_continuous = false
-					print("浏览模式")
-					queue_redraw()
-					get_viewport().set_input_as_handled()
+			if Global.is_shortcut_match(event, "effects_edit", "continuous_mode"):
+				current_place_mode = PlaceMode.CONTINUOUS
+				is_placing_continuous = false
+				print("放置模式: 持续动效")
+				queue_redraw()
+				get_viewport().set_input_as_handled()
+			elif Global.is_shortcut_match(event, "effects_edit", "instant_mode"):
+				current_place_mode = PlaceMode.INSTANT
+				is_placing_continuous = false
+				print("放置模式: 瞬时动效")
+				queue_redraw()
+				get_viewport().set_input_as_handled()
+			elif Global.is_shortcut_match(event, "effects_edit", "browse_mode"):
+				current_place_mode = PlaceMode.BROWSE
+				is_placing_continuous = false
+				print("浏览模式")
+				queue_redraw()
+				get_viewport().set_input_as_handled()
 	
 	if visible and event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:

@@ -447,7 +447,8 @@ func get_layer_events(line_data: Dictionary, event_key: String) -> Array:
 func _process(delta: float) -> void:
 	if is_playing:
 		if audio_player.playing:
-			current_time = audio_player.get_playback_position()
+			var audio_offset_sec = Global.get_audio_offset_ms() / 1000.0
+			current_time = audio_player.get_playback_position() + audio_offset_sec
 		else:
 			current_time += delta
 		if current_time >= duration:
@@ -911,20 +912,21 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_SPACE:
+		if Global.is_shortcut_match(event, "preview", "play_pause"):
 			if is_playing:
 				pause_playback()
 			else:
 				start_playback()
 			get_viewport().set_input_as_handled()
-		elif event.keycode == KEY_ESCAPE:
+		elif Global.is_shortcut_match(event, "preview", "return_editor"):
 			_on_return_button_pressed()
 			get_viewport().set_input_as_handled()
 
 func start_playback() -> void:
 	is_playing = true
 	if audio_player.stream:
-		var play_pos = current_time
+		var audio_offset_sec = Global.get_audio_offset_ms() / 1000.0
+		var play_pos = current_time - audio_offset_sec
 		if play_pos < 0:
 			play_pos = 0
 		if play_pos < audio_player.stream.get_length():
@@ -968,8 +970,12 @@ func seek_to(time_sec: float) -> void:
 	# 拖动后强制重置所有音符可见性，下一帧 update_notes 会重新计算
 	_reset_all_sprites()
 	if is_playing and audio_player.stream:
-		if current_time < audio_player.stream.get_length():
-			audio_player.play(current_time)
+		var audio_offset_sec = Global.get_audio_offset_ms() / 1000.0
+		var seek_pos = current_time - audio_offset_sec
+		if seek_pos < 0:
+			seek_pos = 0
+		if seek_pos < audio_player.stream.get_length():
+			audio_player.play(seek_pos)
 		else:
 			audio_player.stop()
 			is_playing = false

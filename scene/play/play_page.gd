@@ -492,6 +492,9 @@ func judge_single_note(note_data: Dictionary, input_time: float) -> String:
 	# Tap/Hold/Drag 判定均以 startTime 为基准（预计算缓存）
 	var target_time = note_data["_start_time"]
 	var diff = input_time - target_time # seconds
+	# 应用判定偏移
+	var judge_offset_sec = Global.get_judge_offset_ms() / 1000.0
+	diff -= judge_offset_sec
 	
 	# 记录判定误差（用于调试显示）
 	last_judge_error_ms = diff * 1000.0
@@ -783,7 +786,8 @@ func update_hold_effect_positions() -> void:
 func _process(delta: float) -> void:
 	if is_playing:
 		if audio_player.playing:
-			current_time = audio_player.get_playback_position()
+			var audio_offset_sec = Global.get_audio_offset_ms() / 1000.0
+			current_time = audio_player.get_playback_position() + audio_offset_sec
 		else:
 			current_time += delta
 		if current_time >= duration:
@@ -1293,7 +1297,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and not event.echo:
 		var keycode = event.keycode
 		# 功能键 ESC 单独处理，不纳入统计
-		if event.pressed and keycode == KEY_ESCAPE:
+		if Global.is_shortcut_match(event, "play", "return_menu"):
 			_on_return_button_pressed()
 			get_viewport().set_input_as_handled()
 			return
@@ -1333,7 +1337,8 @@ func _input(event: InputEvent) -> void:
 func start_playback() -> void:
 	is_playing = true
 	if audio_player.stream:
-		var play_pos = current_time
+		var audio_offset_sec = Global.get_audio_offset_ms() / 1000.0
+		var play_pos = current_time - audio_offset_sec
 		if play_pos < 0:
 			play_pos = 0
 		if play_pos < audio_player.stream.get_length():

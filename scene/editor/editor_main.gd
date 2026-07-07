@@ -15,6 +15,7 @@ var is_auto_scrolling: bool = false  # 标记是否为自动滚动（防止触�
 @onready var rename_button = $CanvasLayer/JudgeLinePanel/RenameButton
 # 左下信息显示框
 @onready var updated_at_label = $CanvasLayer/UpdatedAt
+@onready var auto_saved_at_label = $CanvasLayer/AutoSavedAt
 @onready var meta_display_label = $CanvasLayer/MetaDisplay
 @onready var beats_display = $CanvasLayer/BeatsDisplay
 @onready var time_display = $CanvasLayer/TimeDisplay
@@ -69,6 +70,10 @@ var current_rwc_path: String = ""
 const ALLOWED_SUBDIVISIONS := [1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 24, 32]  # 允许的节拍细分分母
 var subdivision: int = 1          # 节拍细分分母（1,2,3,...32）
 var pixels_per_second: float = 500.0  # 像素密度
+
+# 自动保存
+var auto_save_timer: Timer = null
+var last_auto_save_path: String = ""
 
 func _ready():
 	# 复用 Global 中已 preload 的等宽字体，避免重复运行时加载
@@ -126,6 +131,11 @@ func _ready():
 	update_metadata_display()
 	update_saved_time_label()
 	
+	# 自动保存标签初始显示打开时间
+	if auto_saved_at_label:
+		var now = Time.get_datetime_string_from_system().replace("T", " ")
+		auto_saved_at_label.text = "打开于 " + now
+	
 	# 监听判定线选择变化，实时更新显示
 	judge_line_tree.item_selected.connect(_on_judge_line_selected)
 	
@@ -157,6 +167,13 @@ func _ready():
 		notes_edit_panel.v_scroll.value = Global.preview_time
 		effects_edit_panel.v_scroll.value = Global.preview_time
 		shader_edit_panel.v_scroll.value = Global.preview_time
+	
+	# 自动保存定时器
+	auto_save_timer = Timer.new()
+	auto_save_timer.one_shot = false
+	auto_save_timer.timeout.connect(_on_auto_save_timer_timeout)
+	add_child(auto_save_timer)
+	_update_auto_save_timer()
 
 func _on_music_finished():
 	if is_music_playing:
@@ -313,6 +330,7 @@ func _on_save_button_pressed():
 	if save_chart_file():
 		is_saved = true
 		update_saved_time_label()
+		_update_auto_save_timer()
 		print("谱面已保存")
 	else:
 		print("保存失败")
@@ -546,71 +564,88 @@ func show_input_dialog(title: String, message: String, default_text: String = ""
 
 # 全局输入事件
 func _input(event: InputEvent):
-	if event is InputEventKey and event.pressed and not event.echo:
-		# 空格键：播放/暂停预览（优先处理，避免被其他面板重复处理）
-		if event.keycode == KEY_SPACE and not event.ctrl_pressed:
-			if is_music_playing:
-				stop_preview()
-				print("[音频控制] 停止预览")
+	# 空格键：播放/暂停预览（优先处理，避免被其他面板重复处理）
+	if Global.is_shortcut_match(event, "editor", "start_preview"):
+		if is_music_playing:
+			stop_preview()
+			print("[音频控制] 停止预览")
+		else:
+			start_preview()
+			print("[音频控制] 开始预览")
+		get_viewport().set_input_as_handled()
+		return
+	# Ctrl+S 保存
+	if Global.is_shortcut_match(event, "editor", "save"):
+		_on_save_button_pressed()
+		get_viewport().set_input_as_handled()
+	# 上下键调整节拍细分（仅当 Note/Effect/Shader 面板可见时）
+	elif notes_edit_panel.visible or effects_edit_panel.visible or shader_edit_panel.visible:
+		if Global.is_shortcut_match(event, "editor", "increase_subdivision"):
+			# 增大细分分母（更密）
+			var new_sub = subdivision + 1
+			var allowed = ALLOWED_SUBDIVISIONS
+			if new_sub in allowed:
+				subdivision = new_sub
+			elif new_sub > 32:
+				subdivision = 32
 			else:
-				start_preview()
-				print("[音频控制] 开始预览")
+				# 找到下一个允许的值
+				for val in allowed:
+					if val > subdivision:
+						subdivision = val
+						break
+			update_notes_panel_settings()
 			get_viewport().set_input_as_handled()
-			return
-		# Ctrl+S 保存
-		if event.keycode == KEY_S and event.ctrl_pressed:
-			_on_save_button_pressed()
+		elif Global.is_shortcut_match(event, "editor", "decrease_subdivision"):
+			var new_sub = subdivision - 1
+			var allowed = ALLOWED_SUBDIVISIONS
+			if new_sub in allowed:
+				subdivision = new_sub
+			elif new_sub < 1:
+				subdivision = 1
+			else:
+				# 找到上一个允许的值
+				for i in range(allowed.size()-1, -1, -1):
+					if allowed[i] < subdivision:
+						subdivision = allowed[i]
+						break
+			update_notes_panel_settings()
 			get_viewport().set_input_as_handled()
-		# F11 全屏
-		elif event.keycode == KEY_F11:
-			toggle_fullscreen()
+		# Ctrl+上下键调整像素密度
+		elif Global.is_shortcut_match(event, "editor", "increase_pixels"):
+			pixels_per_second = clamp(pixels_per_second + 50, 50, 3000)
+			update_notes_panel_settings()
 			get_viewport().set_input_as_handled()
-		# 上下键调整节拍细分（仅当 Note/Effect/Shader 面板可见时）
-		elif notes_edit_panel.visible or effects_edit_panel.visible or shader_edit_panel.visible:
-			if event.keycode == KEY_UP and not event.ctrl_pressed:
-				# 增大细分分母（更密）
-				var new_sub = subdivision + 1
-				var allowed = ALLOWED_SUBDIVISIONS
-				if new_sub in allowed:
-					subdivision = new_sub
-				elif new_sub > 32:
-					subdivision = 32
-				else:
-					# 找到下一个允许的值
-					for val in allowed:
-						if val > subdivision:
-							subdivision = val
-							break
-				update_notes_panel_settings()
-				get_viewport().set_input_as_handled()
-			elif event.keycode == KEY_DOWN and not event.ctrl_pressed:
-				var new_sub = subdivision - 1
-				var allowed = ALLOWED_SUBDIVISIONS
-				if new_sub in allowed:
-					subdivision = new_sub
-				elif new_sub < 1:
-					subdivision = 1
-				else:
-					# 找到上一个允许的值
-					for i in range(allowed.size()-1, -1, -1):
-						if allowed[i] < subdivision:
-							subdivision = allowed[i]
-							break
-				update_notes_panel_settings()
-				get_viewport().set_input_as_handled()
-			# Ctrl+上下键调整像素密度
-			elif event.keycode == KEY_UP and event.ctrl_pressed:
-				pixels_per_second = clamp(pixels_per_second + 50, 50, 3000)
-				update_notes_panel_settings()
-				get_viewport().set_input_as_handled()
-			elif event.keycode == KEY_DOWN and event.ctrl_pressed:
-				pixels_per_second = clamp(pixels_per_second - 50, 50, 3000)
-				update_notes_panel_settings()
-				get_viewport().set_input_as_handled()
-			# fix
-			elif event.keycode == KEY_F and event.ctrl_pressed:
-				fix_chart_data_integers()
-				get_viewport().set_input_as_handled()
+		elif Global.is_shortcut_match(event, "editor", "decrease_pixels"):
+			pixels_per_second = clamp(pixels_per_second - 50, 50, 3000)
+			update_notes_panel_settings()
+			get_viewport().set_input_as_handled()
+		# fix
+		elif Global.is_shortcut_match(event, "editor", "fix_integers"):
+			fix_chart_data_integers()
+			get_viewport().set_input_as_handled()
+
+func _update_auto_save_timer() -> void:
+	if Global.get_auto_save_enabled() and current_rwc_path != "":
+		auto_save_timer.wait_time = Global.get_auto_save_interval() * 60.0
+		auto_save_timer.start()
+	else:
+		auto_save_timer.stop()
+
+func _on_auto_save_timer_timeout() -> void:
+	if current_rwc_path.is_empty():
+		return
+	# 自动保存到 .autosave.rwc，不覆盖原文件
+	var auto_save_path = current_rwc_path.replace(".rwc", ".autosave.rwc")
+	sort_all_events()
+	var json_string = JSON.stringify(chart_data, "\t")
+	var file = FileAccess.open(auto_save_path, FileAccess.WRITE)
+	if file:
+		file.store_string(json_string)
+		file.close()
+		var now = Time.get_datetime_string_from_system().replace("T", " ")
+		auto_saved_at_label.text = "自动保存于 " + now
+		print("[自动保存] 已保存到: ", auto_save_path)
 
 # 更新统计显示（根据选中的判定线或全局）
 func update_metadata_display():
@@ -943,7 +978,8 @@ func start_preview():
 	
 	if audio_player.stream:
 		# 音乐起始时间 = 当前谱面时间（不加offset，因为网格显示的是音乐时间）
-		var music_start = current_chart_time
+		var audio_offset_sec = Global.get_audio_offset_ms() / 1000.0
+		var music_start = current_chart_time - audio_offset_sec
 		if music_start < 0:
 			music_start = 0
 		if music_start < audio_player.stream.get_length():

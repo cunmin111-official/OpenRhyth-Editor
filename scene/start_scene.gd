@@ -38,6 +38,9 @@ func _on_play_file_pressed():
 func _on_edit_file_pressed():
 	get_tree().change_scene_to_file("res://scene/editor/editor_main.tscn")
 
+func _on_settings_pressed():
+	get_tree().change_scene_to_file("res://scene/settings/settings_page.tscn")
+
 func _on_select_file_button_pressed():
 	file_picker.popup()
 

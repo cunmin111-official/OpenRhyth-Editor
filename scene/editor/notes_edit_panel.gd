@@ -334,7 +334,7 @@ func _input(event: InputEvent):
 	# 键盘事件（模式切换、空格播放等）
 	if visible and event is InputEventKey and event.pressed and not event.echo:
 		# 处理删除和平移（需要先处理，避免被其他分支拦截）
-		if event.ctrl_pressed and event.keycode == KEY_DELETE:
+		if Global.is_shortcut_match(event, "notes_edit", "delete_selected"):
 			if selected_notes.size() > 0:
 				for note in selected_notes:
 					var idx = current_notes.find(note)
@@ -351,39 +351,38 @@ func _input(event: InputEvent):
 			# 平移选中的 Notes（以网格间距为单位）
 			var step_beat = 1.0 / subdivision
 			var step_posx = 10.0
-			match event.keycode:
-				KEY_UP:
-					for note in selected_notes:
-						var beat = fraction_to_beat(note["startTime"])
-						beat += step_beat
-						note["startTime"] = beat_to_fraction(beat)
-						if note["type"] == 0:  # Hold
-							var end_beat = fraction_to_beat(note["endTime"])
-							end_beat += step_beat
-							note["endTime"] = beat_to_fraction(end_beat)
-					queue_redraw()
-					get_viewport().set_input_as_handled()
-				KEY_DOWN:
-					for note in selected_notes:
-						var beat = fraction_to_beat(note["startTime"])
-						beat -= step_beat
-						note["startTime"] = beat_to_fraction(beat)
-						if note["type"] == 0:
-							var end_beat = fraction_to_beat(note["endTime"])
-							end_beat -= step_beat
-							note["endTime"] = beat_to_fraction(end_beat)
-					queue_redraw()
-					get_viewport().set_input_as_handled()
-				KEY_LEFT:
-					for note in selected_notes:
-						note["positionX"] -= step_posx
-					queue_redraw()
-					get_viewport().set_input_as_handled()
-				KEY_RIGHT:
-					for note in selected_notes:
-						note["positionX"] += step_posx
-					queue_redraw()
-					get_viewport().set_input_as_handled()
+			if Global.is_shortcut_match(event, "notes_edit", "move_up"):
+				for note in selected_notes:
+					var beat = fraction_to_beat(note["startTime"])
+					beat += step_beat
+					note["startTime"] = beat_to_fraction(beat)
+					if note["type"] == 0:  # Hold
+						var end_beat = fraction_to_beat(note["endTime"])
+						end_beat += step_beat
+						note["endTime"] = beat_to_fraction(end_beat)
+				queue_redraw()
+				get_viewport().set_input_as_handled()
+			elif Global.is_shortcut_match(event, "notes_edit", "move_down"):
+				for note in selected_notes:
+					var beat = fraction_to_beat(note["startTime"])
+					beat -= step_beat
+					note["startTime"] = beat_to_fraction(beat)
+					if note["type"] == 0:
+						var end_beat = fraction_to_beat(note["endTime"])
+						end_beat -= step_beat
+						note["endTime"] = beat_to_fraction(end_beat)
+				queue_redraw()
+				get_viewport().set_input_as_handled()
+			elif event.keycode == KEY_LEFT:
+				for note in selected_notes:
+					note["positionX"] -= step_posx
+				queue_redraw()
+				get_viewport().set_input_as_handled()
+			elif event.keycode == KEY_RIGHT:
+				for note in selected_notes:
+					note["positionX"] += step_posx
+				queue_redraw()
+				get_viewport().set_input_as_handled()
 			if event.keycode in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]:
 				note_data_changed.emit()
 				return
