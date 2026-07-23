@@ -241,6 +241,14 @@ offset_top = 10.0
 offset_right = 368.5
 offset_bottom = 41.0
 
+[node name="AutoFillDurationButton" type="Button" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1550557404]
+layout_mode = 0
+offset_left = 374.0
+offset_top = 10.0
+offset_right = 410.0
+offset_bottom = 41.0
+text = "自动"
+
 [node name="NotesEditPanel" type="Node2D" parent="CanvasLayer/EditArea" unique_id=1567283473]
 visible = false
 script = ExtResource("2_6p0iu")
@@ -343,6 +351,7 @@ offset_bottom = -32.0
 [connection signal="pressed" from="CanvasLayer/JudgeLinePanel/RenameButton" to="." method="_on_rename_button_pressed"]
 [connection signal="pressed" from="CanvasLayer/EditArea/MetaEditPanel/AddBpmButton" to="." method="_on_add_bpm_button_pressed"]
 [connection signal="pressed" from="CanvasLayer/EditArea/MetaEditPanel/DeleteBpmButton" to="." method="_on_delete_bpm_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/EditArea/MetaEditPanel/AutoFillDurationButton" to="." method="_on_auto_fill_duration_pressed"]
 [connection signal="pressed" from="CanvasLayer/EditArea/TextureEditPanel/AddButton" to="CanvasLayer/EditArea/TextureEditPanel" method="_on_add_button_pressed"]
 [connection signal="pressed" from="CanvasLayer/EditArea/TextureEditPanel/DeleteButton" to="CanvasLayer/EditArea/TextureEditPanel" method="_on_delete_button_pressed"]
 [connection signal="pressed" from="CanvasLayer/EditArea/TextureEditPanel/TextureManageButton" to="CanvasLayer/EditArea/TextureEditPanel" method="_on_texture_manage_button_pressed"]

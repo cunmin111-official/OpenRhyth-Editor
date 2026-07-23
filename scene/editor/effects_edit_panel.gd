@@ -48,6 +48,9 @@ var last_update_time: float = 0.0
 var last_click_time: int = 0
 var last_click_event = null
 
+# 剪贴板（复制/粘贴）
+var _clipboard_events: Array = []
+
 func _ready():
 	v_scroll.value_changed.connect(_on_v_scroll_changed)
 	v_scroll.min_value = 0
@@ -187,8 +190,8 @@ func _draw():
 	
 	var mode_text = ""
 	match current_place_mode:
-		PlaceMode.BROWSE: mode_text = "浏览模式 (Ctrl+0/1切换放置, Ctrl+空格浏览)"
-		PlaceMode.INSTANT: mode_text = "瞬时动效放置 | Ctrl+左键对齐网格"
+		PlaceMode.BROWSE: mode_text = "浏览模式"
+		PlaceMode.INSTANT: mode_text = "瞬时动效放置"
 		PlaceMode.CONTINUOUS: mode_text = "持续动效放置 | " + ("点击第二个点" if is_placing_continuous else "点击第一个点")
 	draw_string(ThemeDB.fallback_font, Vector2(10, 30), mode_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.BLACK)
 	
@@ -359,6 +362,26 @@ func _input(event: InputEvent):
 				effect_data_changed.emit()
 				queue_redraw()
 				print("删除了 ", selected_events.size(), " 个动效")
+			get_viewport().set_input_as_handled()
+			return
+		
+		if Global.is_shortcut_match(event, "effects_edit", "copy_selected"):
+			if selected_events.size() > 0:
+				_clipboard_events = []
+				for ev in selected_events:
+					var copy = JSON.parse_string(JSON.stringify(ev))
+					# 保留 _effect_type 以识别效果类型列
+					_clipboard_events.append(copy)
+				print("复制了 ", _clipboard_events.size(), " 个动效")
+			get_viewport().set_input_as_handled()
+			return
+		
+		if Global.is_shortcut_match(event, "effects_edit", "paste_clipboard"):
+			if _clipboard_events.is_empty():
+				print("剪贴板为空，无法粘贴")
+				get_viewport().set_input_as_handled()
+				return
+			_show_paste_beat_dialog()
 			get_viewport().set_input_as_handled()
 			return
 		
@@ -767,6 +790,137 @@ func fix_events_format():
 	effect_data_changed.emit()
 	queue_redraw()
 	print("已修复所有动效的格式（isContinuous 等）")
+
+# ========== 复制粘贴 ==========
+func _parse_beat_input(text: String) -> float:
+	text = text.strip_edges()
+	if text.is_empty():
+		return -1.0
+	if text.is_valid_float():
+		return text.to_float()
+	var parts = text.split(" ", false)
+	var integer_part: float = 0.0
+	var frac_part: float = 0.0
+	if parts.size() == 2:
+		if parts[0].is_valid_float():
+			integer_part = parts[0].to_float()
+		var frac_parts = parts[1].split("/", false)
+		if frac_parts.size() == 2:
+			var num = frac_parts[0].to_float()
+			var den = frac_parts[1].to_float()
+			if den != 0.0:
+				frac_part = num / den
+		return integer_part + frac_part
+	elif parts.size() == 1:
+		var frac_parts = parts[0].split("/", false)
+		if frac_parts.size() == 2:
+			var num = frac_parts[0].to_float()
+			var den = frac_parts[1].to_float()
+			if den != 0.0:
+				return num / den
+	return -1.0
+
+func _show_paste_beat_dialog():
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "粘贴动效"
+	dialog.ok_button_text = "确认"
+	dialog.cancel_button_text = "取消"
+	dialog.min_size = Vector2(400, 150)
+	
+	var vbox = VBoxContainer.new()
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
+	vbox.size = Vector2(400, 150)
+	
+	var label = Label.new()
+	label.text = "输入起始节拍（小数或带分数格式，如 4.5 或 4 1/2）："
+	
+	var line_edit = LineEdit.new()
+	line_edit.placeholder_text = "例如: 4.5 或 4 1/2"
+	line_edit.custom_minimum_size = Vector2(300, 30)
+	line_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	vbox.add_child(label)
+	vbox.add_child(line_edit)
+	dialog.add_child(vbox)
+	
+	dialog.confirmed.connect(func():
+		var beat_text = line_edit.text
+		if beat_text.is_empty():
+			return
+		var paste_beat = _parse_beat_input(beat_text)
+		if paste_beat < 0:
+			print("粘贴失败：无效的节拍格式")
+			return
+		_paste_events_at_beat(paste_beat)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	
+	add_child(dialog)
+	dialog.popup_centered()
+
+func _paste_events_at_beat(paste_beat: float):
+	if _clipboard_events.is_empty():
+		return
+	
+	var min_beat = INF
+	for ev in _clipboard_events:
+		var b = fraction_to_beat(ev.get("startTime", [0, 0, 1]))
+		if b < min_beat:
+			min_beat = b
+	if min_beat == INF:
+		return
+	
+	var offset = paste_beat - min_beat
+	var pasted_count = 0
+	
+	var event_layers = current_judge_line.get("eventLayers", [])
+	if event_layers.is_empty():
+		event_layers = [{}]
+		current_judge_line["eventLayers"] = event_layers
+	var layer = event_layers[0]
+	
+	for ev in _clipboard_events:
+		var new_ev = JSON.parse_string(JSON.stringify(ev))
+		var effect_type = new_ev.get("_effect_type", -1)
+		if effect_type < 0 or effect_type >= EFFECT_TYPES.size():
+			continue
+		
+		var start_b = fraction_to_beat(new_ev["startTime"])
+		start_b += offset
+		new_ev["startTime"] = beat_to_fraction(start_b)
+		
+		if new_ev.has("endTime"):
+			var end_b = fraction_to_beat(new_ev["endTime"])
+			end_b += offset
+			new_ev["endTime"] = beat_to_fraction(end_b)
+		
+		# 设置 isContinuous 和 _is_continuous
+		var start_beat_f = fraction_to_beat(new_ev["startTime"])
+		var end_beat_f = fraction_to_beat(new_ev.get("endTime", new_ev["startTime"]))
+		var is_cont = abs(start_beat_f - end_beat_f) > 0.001
+		new_ev["isContinuous"] = 1 if is_cont else 0
+		new_ev["_is_continuous"] = is_cont
+		
+		if not new_ev.has("type"):
+			new_ev["type"] = "Linear"
+		
+		# 添加到对应的 event layer
+		var event_key = EFFECT_TYPES[effect_type] + "Events"
+		if not layer.has(event_key):
+			layer[event_key] = []
+		layer[event_key].append(new_ev)
+		layer[event_key].sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
+		
+		# 添加到 current_events
+		current_events.append(new_ev)
+		pasted_count += 1
+	
+	clear_selection()
+	effect_data_changed.emit()
+	queue_redraw()
+	print("粘贴了 ", pasted_count, " 个动效，起始节拍: ", paste_beat)
 
 func edit_event_properties(event: Dictionary):
 	var display_event = event.duplicate()

@@ -47,6 +47,9 @@ var last_update_time: float = 0.0
 var last_click_time: int = 0
 var last_click_note = null
 
+# 剪贴板（复制/粘贴）
+var _clipboard_notes: Array = []
+
 func _ready():
 	v_scroll.value_changed.connect(_on_v_scroll_changed)
 	v_scroll.min_value = 0
@@ -179,9 +182,9 @@ func _draw():
 	# 模式提示
 	var mode_text = ""
 	match current_place_mode:
-		PlaceMode.BROWSE: mode_text = "浏览模式 (Ctrl+1/2/0切换放置, Ctrl+空格浏览)"
-		PlaceMode.TAP: mode_text = "Tap放置模式 | Ctrl+左键对齐网格"
-		PlaceMode.DRAG: mode_text = "Drag放置模式 | Ctrl+左键对齐网格"
+		PlaceMode.BROWSE: mode_text = "浏览模式"
+		PlaceMode.TAP: mode_text = "Tap放置模式"
+		PlaceMode.DRAG: mode_text = "Drag放置模式"
 		PlaceMode.HOLD: mode_text = "Hold放置模式 | " + ("点击第二个点" if is_placing_hold else "点击第一个点")
 	draw_string(ThemeDB.fallback_font, Vector2(10, 30), mode_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.BLACK)
 	# 鼠标悬停提示
@@ -344,6 +347,24 @@ func _input(event: InputEvent):
 				note_data_changed.emit()
 				queue_redraw()
 				print("删除了 ", selected_notes.size(), " 个音符")
+			get_viewport().set_input_as_handled()
+			return
+		
+		if Global.is_shortcut_match(event, "notes_edit", "copy_selected"):
+			if selected_notes.size() > 0:
+				_clipboard_notes = []
+				for note in selected_notes:
+					_clipboard_notes.append(JSON.parse_string(JSON.stringify(note)))
+				print("复制了 ", _clipboard_notes.size(), " 个音符")
+			get_viewport().set_input_as_handled()
+			return
+		
+		if Global.is_shortcut_match(event, "notes_edit", "paste_clipboard"):
+			if _clipboard_notes.is_empty():
+				print("剪贴板为空，无法粘贴")
+				get_viewport().set_input_as_handled()
+				return
+			_show_paste_beat_dialog()
 			get_viewport().set_input_as_handled()
 			return
 		
@@ -743,6 +764,129 @@ func select_notes_in_rect_grid(start_grid: Dictionary, end_grid: Dictionary):
 		else:  # Tap/Drag：只检查 startTime
 			if note_beat >= beat_min and note_beat <= beat_max:
 				add_to_selection(note)
+
+# ========== 复制粘贴 ==========
+# 解析用户输入的节拍文本（支持小数或带分数格式）
+func _parse_beat_input(text: String) -> float:
+	text = text.strip_edges()
+	if text.is_empty():
+		return -1.0
+	# 尝试直接解析为浮点数
+	if text.is_valid_float():
+		return text.to_float()
+	# 尝试带分数格式：如 "4 1/2" 或 "1/2"
+	var parts = text.split(" ", false)
+	var integer_part: float = 0.0
+	var frac_part: float = 0.0
+	if parts.size() == 2:
+		# 带分数 "整数 分子/分母"
+		if parts[0].is_valid_float():
+			integer_part = parts[0].to_float()
+		var frac_parts = parts[1].split("/", false)
+		if frac_parts.size() == 2:
+			var num = frac_parts[0].to_float()
+			var den = frac_parts[1].to_float()
+			if den != 0.0:
+				frac_part = num / den
+		return integer_part + frac_part
+	elif parts.size() == 1:
+		# 纯分数 "分子/分母"
+		var frac_parts = parts[0].split("/", false)
+		if frac_parts.size() == 2:
+			var num = frac_parts[0].to_float()
+			var den = frac_parts[1].to_float()
+			if den != 0.0:
+				return num / den
+	return -1.0
+
+# 显示粘贴节拍输入对话框
+func _show_paste_beat_dialog():
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "粘贴音符"
+	dialog.ok_button_text = "确认"
+	dialog.cancel_button_text = "取消"
+	dialog.min_size = Vector2(400, 150)
+	
+	var vbox = VBoxContainer.new()
+	vbox.anchor_right = 1.0
+	vbox.anchor_bottom = 1.0
+	vbox.size = Vector2(400, 150)
+	
+	var label = Label.new()
+	label.text = "输入起始节拍（小数或带分数格式，如 4.5 或 4 1/2）："
+	
+	var line_edit = LineEdit.new()
+	line_edit.placeholder_text = "例如: 4.5 或 4 1/2"
+	line_edit.custom_minimum_size = Vector2(300, 30)
+	line_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	vbox.add_child(label)
+	vbox.add_child(line_edit)
+	dialog.add_child(vbox)
+	
+	dialog.confirmed.connect(func():
+		var beat_text = line_edit.text
+		if beat_text.is_empty():
+			return
+		var paste_beat = _parse_beat_input(beat_text)
+		if paste_beat < 0:
+			print("粘贴失败：无效的节拍格式")
+			return
+		_paste_notes_at_beat(paste_beat)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(dialog.queue_free)
+	
+	add_child(dialog)
+	dialog.popup_centered()
+
+# 在指定节拍粘贴剪贴板中的音符
+func _paste_notes_at_beat(paste_beat: float):
+	if _clipboard_notes.is_empty():
+		return
+	
+	# 计算剪贴板中最早节拍
+	var min_beat = INF
+	for note in _clipboard_notes:
+		var b = fraction_to_beat(note.get("startTime", [0, 0, 1]))
+		if b < min_beat:
+			min_beat = b
+	if min_beat == INF:
+		return
+	
+	var offset = paste_beat - min_beat
+	var pasted_count = 0
+	
+	for note in _clipboard_notes:
+		var new_note = JSON.parse_string(JSON.stringify(note))
+		# 平移 startTime
+		var start_b = fraction_to_beat(new_note["startTime"])
+		start_b += offset
+		new_note["startTime"] = beat_to_fraction(start_b)
+		# 平移 endTime（Hold 音符）
+		if new_note.has("endTime"):
+			var end_b = fraction_to_beat(new_note["endTime"])
+			end_b += offset
+			new_note["endTime"] = beat_to_fraction(end_b)
+		# 确保整数类型
+		if new_note.has("type"):
+			new_note["type"] = int(new_note["type"])
+		if new_note.has("isFake"):
+			new_note["isFake"] = int(new_note["isFake"])
+		# 去除内部字段（如果有）
+		new_note.erase("_start_beat")
+		new_note.erase("_start_time")
+		new_note.erase("_end_beat")
+		new_note.erase("_end_time")
+		new_note.erase("_effect_triggered")
+		
+		current_notes.append(new_note)
+		pasted_count += 1
+	
+	clear_selection()
+	note_data_changed.emit()
+	queue_redraw()
+	print("粘贴了 ", pasted_count, " 个音符，起始节拍: ", paste_beat)
 
 func edit_note_properties(note: Dictionary):
 	var note_json = JSON.stringify(note, "\t")

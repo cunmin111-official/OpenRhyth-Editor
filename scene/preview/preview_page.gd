@@ -12,6 +12,9 @@ var note_textures = {
 	"tap": preload("res://res/note/tap.png"),
 	"drag": preload("res://res/note/drag.png"),
 }
+var judge_textures = {
+	"perfect1": preload("res://res/judgeEffects/perfect1.png"),
+}
 
 var chart_data: Dictionary = {}
 var bpm_list: Array = []
@@ -48,6 +51,7 @@ func _ready() -> void:
 	load_audio()
 	preload_textures()
 	build_3d_scene()
+	_init_effect_pool()
 	real_notes_data.sort()
 	build_ui_labels()
 	bind_video_textures.call_deferred()
@@ -270,6 +274,7 @@ func build_3d_scene() -> void:
 			note_data["_start_time"] = beat_to_time(start_beat)
 			note_data["_end_beat"] = end_beat
 			note_data["_end_time"] = beat_to_time(end_beat)
+			note_data["_effect_triggered"] = false
 			# 记录本线最大 visibleTime（毫秒→秒），决定二分查找的遍历上界
 			var note_visible_s = float(note_data.get("visibleTime", 5000.0)) / 1000.0
 			if note_visible_s > line_max_visible:
@@ -479,10 +484,30 @@ func _process(delta: float) -> void:
 	var passed_count = _bisect_left(real_notes_data, current_time)
 	combo_label.text = str(passed_count)
 	if total_real_count > 0:
-		var score = (float(passed_count) / float(total_real_count)) * 1000000.0 + float(passed_count)
-		score_label.text = str(int(floor(score)))
+		var score_display_mode = Global.get_score_display_mode()
+		if score_display_mode == "expectation":
+			# 期望模式：假设所有已过音符为 perfect1，combo 按已过数推算
+			var effective_acc = 1.0
+			var acc_score = 900000.0 * effective_acc
+			# 未判定任何音符时视为最大连击数占比 100%
+			var combo_score = 100000.0 if passed_count == 0 else 100000.0 * float(passed_count) / float(passed_count)
+			var bonus = float(passed_count)
+			var total_score = int(acc_score + combo_score + bonus)
+			score_label.text = str(total_score)
+		else:
+			# 累加模式：原有计数方式
+			var score = (float(passed_count) / float(total_real_count)) * 1000000.0 + float(passed_count)
+			score_label.text = str(int(floor(score)))
 	else:
 		score_label.text = "0"
+
+	# FC/AP 指示器（预览无判定系统，始终显示"无双"）
+	if Global.get_fc_ap_indicator():
+		accuracy_label.add_theme_color_override("font_color", Color(0.086, 0.522, 0.663))
+		combo_text_label.text = "无双"
+	else:
+		accuracy_label.add_theme_color_override("font_color", Color(0.086, 0.522, 0.663))
+		combo_text_label.text = "『洛神』"
 
 	update_shader_effects()
 	update_judge_lines(current_time)
@@ -740,7 +765,7 @@ func update_notes(line_info: Dictionary, time_sec: float, speed_events: Array, s
 		if note_data["_start_time"] - time_sec > max_visible_s:
 			break
 		var sprite: Sprite3D = note_info["sprite"]
-		update_single_note(sprite, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos)
+		update_single_note(sprite, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos, line_info["node"])
 		if sprite.visible:
 			visible_note_count += 1
 
@@ -754,7 +779,7 @@ func update_notes(line_info: Dictionary, time_sec: float, speed_events: Array, s
 			break
 		var body: Sprite3D = hold_info["body"]
 		var head: Sprite3D = hold_info["head"]
-		update_hold_note(body, head, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos)
+		update_hold_note(body, head, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos, line_info["node"])
 		if body.visible:
 			visible_note_count += 1
 
@@ -827,7 +852,71 @@ func _speed_cumulative(cache: Array, events: Array, t: float) -> float:
 		return entry["cum"]
 	return entry["cum"] + get_event_value_at_time(events, entry["time"] + dt / 2.0, 50.0) * dt
 
-func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
+# ========== 判定特效对象池（预览均显示 Perfect1） ==========
+const EFFECT_POOL_SIZE: int = 32
+var _effect_pool: Array = []
+
+func _init_effect_pool() -> void:
+	for i in range(EFFECT_POOL_SIZE):
+		_effect_pool.append(_new_effect_sprite())
+
+func _new_effect_sprite() -> Sprite3D:
+	var sprite = Sprite3D.new()
+	sprite.transparent = true
+	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	sprite.pixel_size = 0.05
+	sprite.visible = false
+	world_3d.add_child(sprite)
+	return sprite
+
+func _acquire_effect_sprite() -> Sprite3D:
+	if _effect_pool.is_empty():
+		return _new_effect_sprite()
+	return _effect_pool.pop_back()
+
+func _release_effect_sprite(sprite: Sprite3D) -> void:
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	sprite.visible = false
+	_effect_pool.append(sprite)
+
+func spawn_judge_effect(world_pos: Vector3, for_hold: bool = false):
+	# 预览始终显示 Perfect1
+	var tex = judge_textures.get("perfect1")
+	if tex == null:
+		return null
+	var sprite = _acquire_effect_sprite()
+	sprite.texture = tex
+	sprite.position = world_pos
+	sprite.modulate = Color(1, 1, 1, 1.0)
+	sprite.visible = true
+	if for_hold:
+		# Hold 特效持续显示，由调用方控制生命周期
+		return sprite
+	var tween = create_tween()
+	tween.tween_property(sprite, "modulate", Color(1, 1, 1, 0.0), 0.5)
+	tween.tween_callback(_release_effect_sprite.bind(sprite))
+	return null
+
+func fade_hold_effect(sprite: Sprite3D) -> void:
+	if sprite == null or not is_instance_valid(sprite):
+		return
+	var tween = create_tween()
+	tween.tween_property(sprite, "modulate", Color(1, 1, 1, 0.0), 0.5)
+	tween.tween_callback(_release_effect_sprite.bind(sprite))
+
+func _trigger_note_effect(note_data: Dictionary, line_node: Node3D, for_hold: bool = false) -> void:
+	if note_data.get("_effect_triggered", false):
+		return
+	var pos_x = float(note_data.get("positionX", 0.0))
+	var effect_pos = line_node.global_position + Vector3(pos_x, 0.0, 0.0)
+	if for_hold:
+		note_data["_effect_sprite"] = spawn_judge_effect(effect_pos, true)
+	else:
+		spawn_judge_effect(effect_pos)
+	note_data["_effect_triggered"] = true
+
+func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3, line_node: Node3D) -> void:
 	var note_beat = note_data["_start_beat"]
 	var note_time = note_data["_start_time"]
 	# visibleTime 单位为毫秒，转为秒
@@ -835,6 +924,10 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 
 	var time_diff = note_time - time_sec
 	var beat_diff = note_beat - current_beat
+
+	# 音符刚过其判定时刻时触发 Perfect1 特效
+	if time_diff < 0 and not note_data.get("_effect_triggered", false) and line_node != null:
+		_trigger_note_effect(note_data, line_node)
 
 	# 超出可见时间范围（以秒为单位）或已过时 → 隐藏
 	if time_diff > visible_time_s or time_diff < 0:
@@ -858,7 +951,7 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 	base_alpha *= fog_alpha
 	sprite.modulate = Color(1, 1, 1, clamp(base_alpha, 0.0, 1.0))
 
-func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
+func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3, line_node: Node3D) -> void:
 	var start_beat = note_data["_start_beat"]
 	var start_time = note_data["_start_time"]
 	var end_time = note_data["_end_time"]
@@ -868,14 +961,27 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 	var time_diff_start = start_time - time_sec
 	var time_diff_end = end_time - time_sec
 
+	# Hold 刚过其开始时刻时触发 Perfect1 特效（持续显示到结束）
+	if time_diff_start < 0 and not note_data.get("_effect_triggered", false) and line_node != null:
+		_trigger_note_effect(note_data, line_node, true)
+
+	# 每帧更新 Hold 特效精灵位置
+	var effect_sprite: Sprite3D = note_data.get("_effect_sprite")
+	var pos_x = float(note_data.get("positionX", 0.0))
+	if effect_sprite and is_instance_valid(effect_sprite) and effect_sprite.visible:
+		effect_sprite.position = line_node.global_position + Vector3(pos_x, 0.0, 0.0)
+
 	# Hold 的可见性：start 还太远（整体不可见）→ 隐藏；end 已过时（已结束）→ 隐藏
 	if time_diff_start > visible_time_s or time_diff_end < 0:
 		body.visible = false
 		head.visible = false
+		# Hold 结束时渐隐特效
+		if effect_sprite and is_instance_valid(effect_sprite):
+			fade_hold_effect(effect_sprite)
+			note_data["_effect_sprite"] = null
 		return
 
 	# 可见范围内才计算位置/透明度
-	var pos_x = float(note_data.get("positionX", 0.0))
 	var note_speed = float(note_data.get("speed", 10.0))
 	var note_alpha = float(note_data.get("alpha", 1.0))
 
@@ -919,8 +1025,8 @@ func _input(event: InputEvent) -> void:
 				start_playback()
 			get_viewport().set_input_as_handled()
 		elif Global.is_shortcut_match(event, "preview", "return_editor"):
-			_on_return_button_pressed()
 			get_viewport().set_input_as_handled()
+			_on_return_button_pressed()
 
 func start_playback() -> void:
 	is_playing = true
@@ -986,11 +1092,18 @@ func _reset_all_sprites() -> void:
 			var sprite: Sprite3D = note_info["sprite"]
 			sprite.visible = true
 			note_info["data"]["judged"] = false
+			note_info["data"]["_effect_triggered"] = false
 		for hold_info in line_info.get("hold_bodies", []):
 			hold_info["body"].visible = true
 			hold_info["head"].visible = true
 			hold_info["data"]["judged"] = false
 			hold_info["data"]["hold_finalized"] = false
+			hold_info["data"]["_effect_triggered"] = false
+			# 清除旧的 hold 特效精灵
+			var old_effect = hold_info["data"].get("_effect_sprite")
+			if old_effect and is_instance_valid(old_effect):
+				_release_effect_sprite(old_effect)
+			hold_info["data"]["_effect_sprite"] = null
 
 func _on_return_button_pressed() -> void:
 	if audio_player.playing:

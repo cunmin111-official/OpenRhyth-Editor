@@ -27,11 +27,15 @@ const DEFAULT_SHORTCUTS: Dictionary = {
 		"decrease_pixels": {"label": "减小像素密度", "key": KEY_DOWN, "mod_ctrl": true, "mod_shift": false, "mod_alt": false}
 	},
 	"notes_edit": {
+		"copy_selected": {"label": "复制选中音符", "key": KEY_C, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
+		"paste_clipboard": {"label": "粘贴音符", "key": KEY_V, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"delete_selected": {"label": "删除选中音符", "key": KEY_DELETE, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"move_up": {"label": "上移选中音符", "key": KEY_UP, "mod_ctrl": true, "mod_shift": true, "mod_alt": false},
 		"move_down": {"label": "下移选中音符", "key": KEY_DOWN, "mod_ctrl": true, "mod_shift": true, "mod_alt": false}
 	},
 	"effects_edit": {
+		"copy_selected": {"label": "复制选中动效", "key": KEY_C, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
+		"paste_clipboard": {"label": "粘贴动效", "key": KEY_V, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"continuous_mode": {"label": "持续动效放置模式", "key": KEY_0, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"instant_mode": {"label": "瞬时动效放置模式", "key": KEY_1, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"browse_mode": {"label": "浏览模式", "key": KEY_SPACE, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
@@ -41,6 +45,8 @@ const DEFAULT_SHORTCUTS: Dictionary = {
 		"fix_format": {"label": "修复动效格式", "key": KEY_F, "mod_ctrl": true, "mod_shift": true, "mod_alt": false}
 	},
 	"shader_edit": {
+		"copy_selected": {"label": "复制选中Shader事件", "key": KEY_C, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
+		"paste_clipboard": {"label": "粘贴Shader事件", "key": KEY_V, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"continuous_mode": {"label": "持续Shader放置模式", "key": KEY_0, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"instant_mode": {"label": "瞬时Shader放置模式", "key": KEY_1, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"browse_mode": {"label": "浏览模式", "key": KEY_SPACE, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
@@ -111,6 +117,12 @@ func _ensure_defaults() -> void:
 		settings["auto_save"] = {"enabled": false, "interval_minutes": 5}
 	if not settings.has("calibration"):
 		settings["calibration"] = {"audio_offset_ms": 0, "judge_offset_ms": 0}
+	if not settings.has("play"):
+		settings["play"] = {}
+	if not settings["play"].has("score_display_mode"):
+		settings["play"]["score_display_mode"] = "accumulate"
+	if not settings["play"].has("fc_ap_indicator"):
+		settings["play"]["fc_ap_indicator"] = true
 	var sc = settings["shortcuts"]
 	for page_name in DEFAULT_SHORTCUTS:
 		if not sc.has(page_name):
@@ -194,6 +206,41 @@ func set_judge_offset_ms(val: int) -> void:
 	settings["calibration"]["judge_offset_ms"] = clampi(val, -500, 500)
 	save_settings()
 
+# ========== 游玩设置 ==========
+func get_score_display_mode() -> String:
+	return settings.get("play", {}).get("score_display_mode", "accumulate")
+
+func set_score_display_mode(mode: String) -> void:
+	if not settings.has("play"):
+		settings["play"] = {}
+	settings["play"]["score_display_mode"] = mode
+	save_settings()
+
+func get_fc_ap_indicator() -> bool:
+	return settings.get("play", {}).get("fc_ap_indicator", true)
+
+func set_fc_ap_indicator(enabled: bool) -> void:
+	if not settings.has("play"):
+		settings["play"] = {}
+	settings["play"]["fc_ap_indicator"] = enabled
+	save_settings()
+
+# FC/AP 指示器状态计算（静态函数，play 和 preview 共享）
+# 返回值：{color: Color, combo_text: String}
+static func calc_fc_ap_status(perfect1_cnt: int, perfect_cnt: int, good_cnt: int, miss_cnt: int) -> Dictionary:
+	var total = perfect1_cnt + perfect_cnt + good_cnt + miss_cnt
+	# 条件1：无判定或全 perfect1
+	if total == 0 or (perfect1_cnt == total):
+		return {"color": Color(0.086, 0.522, 0.663), "combo_text": "无双"}
+	# 条件2：全 perfect1 + perfect（无 good/miss）
+	if miss_cnt == 0 and good_cnt == 0:
+		return {"color": Color(0.098, 0.757, 0.557), "combo_text": "宗师"}
+	# 条件3：无 miss
+	if miss_cnt == 0:
+		return {"color": Color(0.820, 0.161, 0.125), "combo_text": "豪侠"}
+	# 条件4：有 miss
+	return {"color": Color(0.0, 0.0, 0.0), "combo_text": "连击"}
+
 # 检查快捷键是否匹配
 static func is_shortcut_match(event: InputEvent, page: String, action: String) -> bool:
 	if not (event is InputEventKey and event.pressed and not event.echo):
@@ -230,9 +277,20 @@ static func get_shortcut_display(page: String, action: String) -> String:
 		parts.append("Alt")
 	if sc["mod_shift"]:
 		parts.append("Shift")
-	var key_name = KEY_DISPLAY_NAMES.get(sc["key"], char(sc["key"]))
+	var key_name = _keycode_to_name(sc["key"])
 	parts.append(key_name)
 	return "+".join(parts)
+
+# 将 Godot keycode 转为可读名称（避免 char() 对非 ASCII keycode 产生乱码）
+static func _keycode_to_name(keycode: int) -> String:
+	var name = KEY_DISPLAY_NAMES.get(keycode)
+	if name != null:
+		return name
+	# ASCII 可打印范围（32-126）：空格、数字、字母、标点
+	if keycode >= 32 and keycode <= 126:
+		return char(keycode)
+	# 兜底：显示 keycode 数字
+	return "Key(%d)" % keycode
 
 # 获取某个页面的所有操作的快捷键信息
 static func get_page_shortcut_actions(page: String) -> Array:

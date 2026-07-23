@@ -29,7 +29,7 @@ offset_bottom = 938.0
 theme_override_font_sizes/font_size = 36
 text = "编辑 RWC"
 
-[node name="SettingsButton" type="Button" parent="."]
+[node name="SettingsButton" type="Button" parent="." unique_id=1701971580]
 layout_mode = 0
 offset_left = 740.0
 offset_top = 955.0
@@ -63,14 +63,15 @@ offset_top = 233.0
 offset_right = 1249.0
 offset_bottom = 313.0
 theme_override_font_sizes/font_size = 48
-text = "OpenRhyth v0.3.2(pre1)"
+text = "开源洛盛 v0.4.0(pre1)"
 
 [node name="VersionLabel" type="Label" parent="." unique_id=180034980]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
-text = "Designed by cunmin111
-Powered by Godot"
+text = "洛盛工作室 cunmin111 制作
+基于 Godot 开源引擎
+除 cunmin111 是锦衣卫以外，本项目与禾念及其旗下虚拟歌姬没有任何关系"
 
 [node name="FilePicker" type="FileDialog" parent="." unique_id=614988923]
 oversampling_override = 1.0
@@ -81,11 +82,11 @@ filters = PackedStringArray("*.rwc")
 
 [node name="滚木" type="Label" parent="." unique_id=621900486]
 layout_mode = 0
-offset_top = 2000.0
-offset_right = 136.0
-offset_bottom = 2049.0
-text = "Tip：满姐咻咻咻！
-应该没人看到吧（"
+offset_top = 1060.0
+offset_right = 365.0
+offset_bottom = 1109.0
+theme_override_colors/font_color = Color(0.4, 0.8, 1, 1)
+text = "Tip：华风夏韵 \\(｡・ω・｡)/ 洛水天依！！！#66ccff"
 
 [node name="SelectMusicButton" type="Button" parent="." unique_id=651400281]
 layout_mode = 0

@@ -133,6 +133,106 @@ func _build_ui() -> void:
 	as_note.custom_minimum_size = Vector2(900, 40)
 	autosave_tab.add_child(as_note)
 	
+	# === 游玩 Tab ===
+	var play_tab = Control.new()
+	play_tab.name = "游玩"
+	tab_container.add_child(play_tab)
+	
+	# ---- 分数显示偏好 ----
+	var score_title = Label.new()
+	score_title.text = "分数显示偏好"
+	score_title.position = Vector2(50, 30)
+	score_title.add_theme_font_size_override("font_size", 28)
+	play_tab.add_child(score_title)
+	
+	var score_desc = Label.new()
+	score_desc.text = "选择游玩和预览页面中分数的计算方式"
+	score_desc.position = Vector2(50, 70)
+	score_desc.add_theme_font_size_override("font_size", 16)
+	score_desc.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	score_desc.custom_minimum_size = Vector2(600, 30)
+	play_tab.add_child(score_desc)
+	
+	var score_mode_group = BoxContainer.new()
+	score_mode_group.position = Vector2(50, 110)
+	score_mode_group.size = Vector2(500, 100)
+	score_mode_group.add_theme_constant_override("separation", 4)
+	score_mode_group.vertical = true
+	play_tab.add_child(score_mode_group)
+	
+	var score_accumulate = CheckButton.new()
+	score_accumulate.text = "累加模式"
+	score_accumulate.button_pressed = (Global.get_score_display_mode() == "accumulate")
+	score_accumulate.toggled.connect(func(enabled: bool):
+		if enabled:
+			Global.set_score_display_mode("accumulate")
+	)
+	score_mode_group.add_child(score_accumulate)
+	
+	var score_accumulate_desc = Label.new()
+	score_accumulate_desc.text = "根据已判定音符的准度累加计算分数（现有方式）"
+	score_accumulate_desc.add_theme_font_size_override("font_size", 14)
+	score_accumulate_desc.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	score_accumulate_desc.custom_minimum_size = Vector2(500, 24)
+	score_mode_group.add_child(score_accumulate_desc)
+	
+	var score_expect = CheckButton.new()
+	score_expect.text = "期望模式"
+	score_expect.button_pressed = (Global.get_score_display_mode() == "expectation")
+	score_expect.toggled.connect(func(enabled: bool):
+		if enabled:
+			Global.set_score_display_mode("expectation")
+	)
+	score_mode_group.add_child(score_expect)
+	
+	var score_expect_desc = Label.new()
+	score_expect_desc.text = "以实时准度代替分数公式中的总体准度元素计算分数"
+	score_expect_desc.add_theme_font_size_override("font_size", 14)
+	score_expect_desc.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	score_expect_desc.custom_minimum_size = Vector2(500, 24)
+	score_mode_group.add_child(score_expect_desc)
+	
+	# 互斥逻辑
+	score_accumulate.toggled.connect(func(enabled: bool):
+		if enabled and score_expect.button_pressed:
+			score_expect.button_pressed = false
+	)
+	score_expect.toggled.connect(func(enabled: bool):
+		if enabled and score_accumulate.button_pressed:
+			score_accumulate.button_pressed = false
+	)
+	
+	# ---- FC/AP 指示器 ----
+	var fc_title = Label.new()
+	fc_title.text = "FC/AP 指示器"
+	fc_title.position = Vector2(50, 240)
+	fc_title.add_theme_font_size_override("font_size", 28)
+	play_tab.add_child(fc_title)
+	
+	var fc_desc = Label.new()
+	fc_desc.text = "根据判定情况改变准度颜色和连击提示文本"
+	fc_desc.position = Vector2(50, 280)
+	fc_desc.add_theme_font_size_override("font_size", 16)
+	fc_desc.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	fc_desc.custom_minimum_size = Vector2(600, 30)
+	play_tab.add_child(fc_desc)
+	
+	var fc_toggle = CheckButton.new()
+	fc_toggle.text = "开启 FC/AP 指示器"
+	fc_toggle.position = Vector2(50, 320)
+	fc_toggle.button_pressed = Global.get_fc_ap_indicator()
+	fc_toggle.toggled.connect(func(enabled: bool):
+		Global.set_fc_ap_indicator(enabled)
+	)
+	play_tab.add_child(fc_toggle)
+	
+	var fc_note = Label.new()
+	fc_note.text = "无双：全 Perfect1 | 宗师：全 Perfect+ | 豪侠：无 Miss | 连击：出现 Miss"
+	fc_note.position = Vector2(70, 360)
+	fc_note.add_theme_font_size_override("font_size", 14)
+	fc_note.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	play_tab.add_child(fc_note)
+
 	# === 延迟校准 Tab ===
 	var cal_tab = Control.new()
 	cal_tab.name = "延迟校准"

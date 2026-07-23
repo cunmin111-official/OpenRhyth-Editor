@@ -36,6 +36,7 @@ var is_auto_scrolling: bool = false  # 标记是否为自动滚动（防止触�
 @onready var add_bpm_button = $CanvasLayer/EditArea/MetaEditPanel/AddBpmButton
 @onready var delete_bpm_button = $CanvasLayer/EditArea/MetaEditPanel/DeleteBpmButton
 @onready var duration_line_edit = $CanvasLayer/EditArea/MetaEditPanel/DurationLineEdit
+@onready var auto_fill_duration_button = $CanvasLayer/EditArea/MetaEditPanel/AutoFillDurationButton
 
 # Note 编辑面板
 @onready var notes_edit_panel = $CanvasLayer/EditArea/NotesEditPanel
@@ -574,11 +575,9 @@ func _input(event: InputEvent):
 			print("[音频控制] 开始预览")
 		get_viewport().set_input_as_handled()
 		return
-	# Ctrl+S 保存
 	if Global.is_shortcut_match(event, "editor", "save"):
 		_on_save_button_pressed()
 		get_viewport().set_input_as_handled()
-	# 上下键调整节拍细分（仅当 Note/Effect/Shader 面板可见时）
 	elif notes_edit_panel.visible or effects_edit_panel.visible or shader_edit_panel.visible:
 		if Global.is_shortcut_match(event, "editor", "increase_subdivision"):
 			# 增大细分分母（更密）
@@ -611,7 +610,6 @@ func _input(event: InputEvent):
 						break
 			update_notes_panel_settings()
 			get_viewport().set_input_as_handled()
-		# Ctrl+上下键调整像素密度
 		elif Global.is_shortcut_match(event, "editor", "increase_pixels"):
 			pixels_per_second = clamp(pixels_per_second + 50, 50, 3000)
 			update_notes_panel_settings()
@@ -620,7 +618,6 @@ func _input(event: InputEvent):
 			pixels_per_second = clamp(pixels_per_second - 50, 50, 3000)
 			update_notes_panel_settings()
 			get_viewport().set_input_as_handled()
-		# fix
 		elif Global.is_shortcut_match(event, "editor", "fix_integers"):
 			fix_chart_data_integers()
 			get_viewport().set_input_as_handled()
@@ -848,6 +845,17 @@ func _on_duration_changed(new_text: String):
 	else:
 		chart_data["META"]["duration"] = 0.0
 	mark_unsaved()
+
+func _on_auto_fill_duration_pressed():
+	if Global.selected_music_path == "" or not FileAccess.file_exists(Global.selected_music_path):
+		print("无法自动填充：未选择音乐文件")
+		return
+	var stream = load_audio_from_path(Global.selected_music_path)
+	if stream == null:
+		print("无法自动填充：加载音乐文件失败")
+		return
+	var length = stream.get_length()
+	duration_line_edit.text = str(length)
 
 var _last_beats_text: String = ""
 var _last_time_text: String = ""

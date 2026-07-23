@@ -822,6 +822,7 @@ func _process(delta: float) -> void:
 	# 更新UI显示
 	combo_label.text = str(combo)
 	var total_judged = perfect1_cnt + perfect_cnt + good_cnt + miss_cnt
+	var score_display_mode = Global.get_score_display_mode()
 	if total_notes_real > 0 and total_judged > 0:
 		# 实时准度（显示用）：仅基于已判定音符
 		var realtime_acc = float(perfect1_cnt + perfect_cnt) + 0.6 * float(good_cnt)
@@ -832,14 +833,34 @@ func _process(delta: float) -> void:
 		# 总体准度（计分用）：基于总音符数
 		var overall_acc = float(perfect1_cnt + perfect_cnt) + 0.6 * float(good_cnt)
 		overall_acc = overall_acc / float(total_notes_real)
-		var acc_score = 900000.0 * overall_acc
-		var combo_score = 100000.0 * float(max_combo) / float(total_notes_real)
+		# 期望模式：用实时准度代替总体准度，连击按已判定数推算
+		var effective_acc = realtime_acc if score_display_mode == "expectation" else overall_acc
+		var acc_score = 900000.0 * effective_acc
+		var combo_denom = float(total_judged) if score_display_mode == "expectation" else float(total_notes_real)
+		var combo_score = 100000.0 * float(max_combo) / combo_denom
 		var bonus = float(perfect1_cnt)
+		var total_score = int(acc_score + combo_score + bonus)
+		score_label.text = str(total_score)
+	elif total_notes_real > 0 and score_display_mode == "expectation":
+		# 期望模式且未判定任何音符：视为 100% 准度 + 100% 连击占比
+		accuracy_label.text = "准度100.00%"
+		var acc_score = 900000.0
+		var combo_score = 100000.0  # 最大连击数占比 100%
+		var bonus = 0.0
 		var total_score = int(acc_score + combo_score + bonus)
 		score_label.text = str(total_score)
 	else:
 		accuracy_label.text = "准度100.00%"
 		score_label.text = "0"
+
+	# FC/AP 指示器
+	if Global.get_fc_ap_indicator():
+		var fc_status = Global.calc_fc_ap_status(perfect1_cnt, perfect_cnt, good_cnt, miss_cnt)
+		accuracy_label.add_theme_color_override("font_color", fc_status["color"])
+		combo_text_label.text = fc_status["combo_text"]
+	else:
+		accuracy_label.add_theme_color_override("font_color", Color(0.086, 0.522, 0.663))
+		combo_text_label.text = "连击"
 
 	update_shader_effects()
 	update_judge_lines(current_time)
@@ -1298,8 +1319,8 @@ func _input(event: InputEvent) -> void:
 		var keycode = event.keycode
 		# 功能键 ESC 单独处理，不纳入统计
 		if Global.is_shortcut_match(event, "play", "return_menu"):
-			_on_return_button_pressed()
 			get_viewport().set_input_as_handled()
+			_on_return_button_pressed()
 			return
 		# 按键按下统计
 		if event.pressed:
