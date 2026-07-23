@@ -50,6 +50,13 @@ var last_click_note = null
 # 剪贴板（复制/粘贴）
 var _clipboard_notes: Array = []
 
+# MIDI 参考节拍位置
+var _midi_reference_beats: Array = []
+
+func set_midi_reference(beats: Array):
+	_midi_reference_beats = beats
+	queue_redraw()
+
 func _ready():
 	v_scroll.value_changed.connect(_on_v_scroll_changed)
 	v_scroll.min_value = 0
@@ -151,10 +158,10 @@ func _draw():
 			continue
 		
 		if is_sub:
-			draw_line(Vector2(0, y), Vector2(view_width, y), Color.DARK_GRAY, 1.0)
+			draw_line(Vector2(0, y), Vector2(view_width, y), Color.DARK_GRAY, 2.0)
 			draw_string(ThemeDB.fallback_font, Vector2(2, y - 2), "+" + str(part), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color.LIGHT_GRAY)
 		else:
-			draw_line(Vector2(0, y), Vector2(view_width, y), Color.GRAY, 1.0)
+			draw_line(Vector2(0, y), Vector2(view_width, y), Color.GRAY, 3.0)
 			draw_string(ThemeDB.fallback_font, Vector2(2, y - 2), str(beat), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.BLACK)
 			if beat_time >= 0:
 				var minutes = floor(beat_time / 60)
@@ -170,8 +177,19 @@ func _draw():
 	var end_x = floor(visible_right / 10.0) * 10
 	for x_val in range(start_x, end_x + 1, 10):
 		var screen_x = (x_val - visible_left) / 200.0 * view_width
-		draw_line(Vector2(screen_x, 0), Vector2(screen_x, view_height), Color.GRAY, 1.0)
+		draw_line(Vector2(screen_x, 0), Vector2(screen_x, view_height), Color.GRAY, 2.0)
 		draw_string(ThemeDB.fallback_font, Vector2(screen_x + 2, 12), str(x_val), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color.BLACK)
+	
+	# MIDI 参考线（蓝色 #66ccff）
+	var midi_color = Color(0.4, 0.8, 1.0, 0.6)  # #66ccff
+	for beat in _midi_reference_beats:
+		var beat_time = beat_to_time(beat)
+		if beat_time < bottom_time - 0.001 or beat_time > top_time + 0.001:
+			continue
+		var y = time_to_y(beat_time)
+		if y < -5 or y > view_height + 5:
+			continue
+		draw_line(Vector2(0, y), Vector2(view_width, y), midi_color, 3.0)
 	
 	# 参考线
 	var ref_y = view_height - 5
@@ -365,6 +383,15 @@ func _input(event: InputEvent):
 				get_viewport().set_input_as_handled()
 				return
 			_show_paste_beat_dialog()
+			get_viewport().set_input_as_handled()
+			return
+		
+		if Global.is_shortcut_match(event, "notes_edit", "quantize_selected"):
+			if selected_notes.size() > 0:
+				_quantize_selected_notes()
+				note_data_changed.emit()
+				queue_redraw()
+				print("量化了 ", selected_notes.size(), " 个音符")
 			get_viewport().set_input_as_handled()
 			return
 		
@@ -605,12 +632,44 @@ func screen_to_grid(screen_pos: Vector2) -> Dictionary:
 	var align = Input.is_key_pressed(KEY_CTRL)
 	if align:
 		var step = 1.0 / subdivision
-		beat = round(beat / step) * step
+		# 优先吸附到 MIDI 参考节拍
+		if not _midi_reference_beats.is_empty():
+			var nearest_midi_beat = _find_nearest_midi_beat(beat)
+			if nearest_midi_beat >= 0 and abs(nearest_midi_beat - beat) < step * 0.5:
+				beat = nearest_midi_beat
+			else:
+				beat = round(beat / step) * step
+		else:
+			beat = round(beat / step) * step
 		posx = round(posx / 10.0) * 10.0
-		#posx = clamp(posx, -100, 100)
-	#else:
-		#posx = clamp(posx, -100, 100)
 	return {"time": time, "beat": beat, "posx": posx}
+
+# 查找最近的 MIDI 参考节拍
+func _find_nearest_midi_beat(beat: float) -> float:
+	if _midi_reference_beats.is_empty():
+		return -1.0
+	# 二分查找
+	var lo = 0
+	var hi = _midi_reference_beats.size() - 1
+	while lo <= hi:
+		var mid = (lo + hi) / 2
+		var mid_val = _midi_reference_beats[mid] as float
+		if beat < mid_val:
+			hi = mid - 1
+		elif beat > mid_val:
+			lo = mid + 1
+		else:
+			return mid_val
+	# lo 是第一个大于 beat 的索引
+	if lo == 0:
+		return _midi_reference_beats[0] as float
+	if lo >= _midi_reference_beats.size():
+		return _midi_reference_beats[_midi_reference_beats.size() - 1] as float
+	var prev = _midi_reference_beats[lo - 1] as float
+	var next = _midi_reference_beats[lo] as float
+	if abs(beat - prev) < abs(beat - next):
+		return prev
+	return next
 
 # 将节拍浮点数转换为带分数数组 [整数,分子,分母]
 func beat_to_fraction(beat: float) -> Array:
@@ -887,6 +946,22 @@ func _paste_notes_at_beat(paste_beat: float):
 	note_data_changed.emit()
 	queue_redraw()
 	print("粘贴了 ", pasted_count, " 个音符，起始节拍: ", paste_beat)
+
+# 量化：将选中音符的开始位置对齐到最近的网格线
+func _quantize_selected_notes():
+	if selected_notes.is_empty():
+		return
+	var step = 1.0 / subdivision
+	for note in selected_notes:
+		var start_beat = fraction_to_beat(note.get("startTime", [0, 0, 1]))
+		var nearest = round(start_beat / step) * step
+		note["startTime"] = beat_to_fraction(nearest)
+		# Hold 音符：endTime 同步偏移
+		if note.get("type", 1) == 0 and note.has("endTime"):
+			var end_beat = fraction_to_beat(note["endTime"])
+			var delta = nearest - start_beat
+			end_beat += delta
+			note["endTime"] = beat_to_fraction(end_beat)
 
 func edit_note_properties(note: Dictionary):
 	var note_json = JSON.stringify(note, "\t")

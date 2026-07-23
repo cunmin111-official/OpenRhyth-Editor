@@ -29,6 +29,7 @@ const DEFAULT_SHORTCUTS: Dictionary = {
 	"notes_edit": {
 		"copy_selected": {"label": "复制选中音符", "key": KEY_C, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"paste_clipboard": {"label": "粘贴音符", "key": KEY_V, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
+		"quantize_selected": {"label": "量化选中音符", "key": KEY_U, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"delete_selected": {"label": "删除选中音符", "key": KEY_DELETE, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"move_up": {"label": "上移选中音符", "key": KEY_UP, "mod_ctrl": true, "mod_shift": true, "mod_alt": false},
 		"move_down": {"label": "下移选中音符", "key": KEY_DOWN, "mod_ctrl": true, "mod_shift": true, "mod_alt": false}
@@ -36,6 +37,7 @@ const DEFAULT_SHORTCUTS: Dictionary = {
 	"effects_edit": {
 		"copy_selected": {"label": "复制选中动效", "key": KEY_C, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"paste_clipboard": {"label": "粘贴动效", "key": KEY_V, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
+		"quantize_selected": {"label": "量化选中动效", "key": KEY_U, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"continuous_mode": {"label": "持续动效放置模式", "key": KEY_0, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"instant_mode": {"label": "瞬时动效放置模式", "key": KEY_1, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"browse_mode": {"label": "浏览模式", "key": KEY_SPACE, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
@@ -47,6 +49,7 @@ const DEFAULT_SHORTCUTS: Dictionary = {
 	"shader_edit": {
 		"copy_selected": {"label": "复制选中Shader事件", "key": KEY_C, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"paste_clipboard": {"label": "粘贴Shader事件", "key": KEY_V, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
+		"quantize_selected": {"label": "量化选中Shader事件", "key": KEY_U, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"continuous_mode": {"label": "持续Shader放置模式", "key": KEY_0, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"instant_mode": {"label": "瞬时Shader放置模式", "key": KEY_1, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},
 		"browse_mode": {"label": "浏览模式", "key": KEY_SPACE, "mod_ctrl": true, "mod_shift": false, "mod_alt": false},

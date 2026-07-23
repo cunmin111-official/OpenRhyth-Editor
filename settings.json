@@ -99,6 +99,12 @@
 				"mod_ctrl": true,
 				"mod_shift": false
 			},
+			"quantize_selected": {
+				"key": 85,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
 			"shift_down": {
 				"key": 4194322.0,
 				"mod_alt": false,
@@ -147,6 +153,12 @@
 			},
 			"paste_clipboard": {
 				"key": 86.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"quantize_selected": {
+				"key": 85,
 				"mod_alt": false,
 				"mod_ctrl": true,
 				"mod_shift": false
@@ -207,6 +219,12 @@
 			},
 			"paste_clipboard": {
 				"key": 86.0,
+				"mod_alt": false,
+				"mod_ctrl": true,
+				"mod_shift": false
+			},
+			"quantize_selected": {
+				"key": 85,
 				"mod_alt": false,
 				"mod_ctrl": true,
 				"mod_shift": false

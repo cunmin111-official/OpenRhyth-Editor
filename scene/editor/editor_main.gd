@@ -38,6 +38,19 @@ var is_auto_scrolling: bool = false  # 标记是否为自动滚动（防止触�
 @onready var duration_line_edit = $CanvasLayer/EditArea/MetaEditPanel/DurationLineEdit
 @onready var auto_fill_duration_button = $CanvasLayer/EditArea/MetaEditPanel/AutoFillDurationButton
 
+# MIDI 导入控件
+@onready var import_midi_button = $CanvasLayer/EditArea/MetaEditPanel/ImportMidiButton
+@onready var midi_file_path_label = $CanvasLayer/EditArea/MetaEditPanel/MidiFilePathLabel
+@onready var midi_track_list = $CanvasLayer/EditArea/MetaEditPanel/MidiTrackList
+@onready var apply_bpm_from_midi_button = $CanvasLayer/EditArea/MetaEditPanel/ApplyBpmFromMidiButton
+@onready var midi_note_count_label = $CanvasLayer/EditArea/MetaEditPanel/MidiNoteCountLabel
+@onready var midi_offset_edit = $CanvasLayer/EditArea/MetaEditPanel/MidiOffsetEdit
+@onready var midi_file_dialog = $CanvasLayer/EditArea/MetaEditPanel/MidiFileDialog
+
+# MIDI 数据
+var _midi_data: Dictionary = {}
+var _midi_beat_positions: Array = []  # 选中轨道合并后的音符节拍位置（排序去重）
+
 # Note 编辑面板
 @onready var notes_edit_panel = $CanvasLayer/EditArea/NotesEditPanel
 
@@ -128,6 +141,9 @@ func _ready():
 	# 传递网格设置
 	update_notes_panel_settings()
 	
+	# 传递 MIDI 参考（如果有）
+	_apply_midi_data_to_panels()
+	
 	# 更新统计和保存状态
 	update_metadata_display()
 	update_saved_time_label()
@@ -192,10 +208,12 @@ func _on_judge_line_selected():
 		var judge_line_data = get_selected_judge_line_data()
 		notes_edit_panel.update_data(chart_data, judge_line_data)
 		update_notes_panel_settings()
+		_apply_midi_data_to_panels()
 	elif current_mode == EditMode.EFFECT:
 		var judge_line_data = get_selected_judge_line_data()
 		effects_edit_panel.update_data(chart_data, judge_line_data)
 		update_notes_panel_settings()
+		_apply_midi_data_to_panels()
 	elif current_mode == EditMode.TEXTURE:
 		var judge_line_data = get_selected_judge_line_data()
 		texture_edit_panel.update_data(chart_data, judge_line_data, current_rwc_path)
@@ -249,6 +267,7 @@ func _on_meta_manage_button_pressed() -> void:
 	effects_edit_panel.visible = false
 	texture_edit_panel.visible = false
 	shader_edit_panel.visible = false
+	_apply_midi_data_to_panels()
 	update_metadata_display()
 	print("切换到 Meta 编辑模式")
 
@@ -263,6 +282,7 @@ func _on_note_manage_button_pressed() -> void:
 	var judge_line_data = get_selected_judge_line_data()
 	notes_edit_panel.update_data(chart_data, judge_line_data)
 	update_notes_panel_settings()
+	_apply_midi_data_to_panels()
 	update_metadata_display()
 	print("切换到 Note 编辑模式")
 
@@ -281,6 +301,7 @@ func _on_effect_manage_button_pressed() -> void:
 		if typeof(meta) == TYPE_DICTIONARY:
 			judge_line_data = meta
 	effects_edit_panel.update_data(chart_data, judge_line_data)
+	_apply_midi_data_to_panels()
 	print("切换到 Effect 编辑模式")
 
 func _on_texture_manage_button_pressed() -> void:
@@ -309,6 +330,7 @@ func _on_shader_manage_button_pressed() -> void:
 	texture_edit_panel.visible = false
 	shader_edit_panel.visible = true
 	shader_edit_panel.update_data(chart_data)
+	_apply_midi_data_to_panels()
 	print("切换到 Shader 编辑模式")
 
 func _on_return_button_pressed() -> void:
@@ -856,6 +878,109 @@ func _on_auto_fill_duration_pressed():
 		return
 	var length = stream.get_length()
 	duration_line_edit.text = str(length)
+
+# ===================== MIDI 导入相关 =====================
+
+func _on_import_midi_button_pressed():
+	midi_file_dialog.popup_centered(Vector2(800, 600))
+
+func _on_midi_file_selected(path: String):
+	print("[MIDI] 选择文件: ", path)
+	var result = load("res://scene/editor/midi_parser.gd").parse_midi_file(path)
+	if not result["success"]:
+		print("[MIDI] 解析失败: ", result["error"])
+		midi_file_path_label.text = "解析失败: " + result["error"]
+		return
+	
+	_midi_data = result
+	midi_file_path_label.text = "已加载: " + path.get_file()
+	
+	# 填充轨道列表
+	midi_track_list.clear()
+	var track_names = result["track_names"] as Array
+	for name in track_names:
+		midi_track_list.add_item(str(name))
+	
+	# 默认全选
+	for i in range(midi_track_list.item_count):
+		midi_track_list.select(i)
+	
+	_update_midi_reference_positions()
+	_apply_midi_data_to_panels()
+	print("[MIDI] 成功加载，共 ", track_names.size(), " 个轨道")
+
+func _on_midi_track_selected(index: int, selected: bool):
+	_update_midi_reference_positions()
+	_apply_midi_data_to_panels()
+
+func _on_apply_bpm_from_midi_pressed():
+	if _midi_data.is_empty() or not _midi_data.get("success", false):
+		print("[MIDI] 没有已加载的 MIDI 数据")
+		return
+	
+	var midi_bpm = _midi_data.get("bpm_list", [])
+	if midi_bpm.is_empty():
+		print("[MIDI] MIDI 文件中没有 BPM 信息")
+		return
+	
+	chart_data["BPMList"] = midi_bpm.duplicate(true)
+	sort_bpm_list()
+	refresh_bpm_tree()
+	mark_unsaved()
+	
+	# 重新刷新所有面板
+	var judge_line_data = get_selected_judge_line_data()
+	notes_edit_panel.update_data(chart_data, judge_line_data)
+	effects_edit_panel.update_data(chart_data, judge_line_data)
+	shader_edit_panel.update_data(chart_data)
+	update_notes_panel_settings()
+	
+	print("[MIDI] 已应用 BPM，共 ", midi_bpm.size(), " 个 BPM 事件")
+
+# 根据选中的轨道更新 MIDI 参考节拍位置
+func _update_midi_reference_positions():
+	if _midi_data.is_empty():
+		_midi_beat_positions = []
+		midi_note_count_label.text = ""
+		return
+	
+	var all_beats: Array = []
+	var track_notes = _midi_data.get("track_notes", []) as Array
+	
+	for i in range(midi_track_list.item_count):
+		if midi_track_list.is_selected(i) and i < track_notes.size():
+			var beats = track_notes[i] as Array
+			for b in beats:
+				all_beats.append(b)
+	
+	# 排序去重
+	all_beats.sort()
+	var unique_beats = []
+	for b in all_beats:
+		if unique_beats.is_empty() or abs(b - unique_beats.back()) > 0.001:
+			unique_beats.append(b)
+	
+	# 应用偏移量
+	var offset = midi_offset_edit.text.to_float()
+	if offset != 0.0:
+		var offset_beats = []
+		for b in unique_beats:
+			offset_beats.append(b + offset)
+		_midi_beat_positions = offset_beats
+	else:
+		_midi_beat_positions = unique_beats
+	
+	midi_note_count_label.text = "MIDI 参考音符: " + str(_midi_beat_positions.size()) + " 个"
+
+func _on_midi_offset_changed(new_text: String):
+	_update_midi_reference_positions()
+	_apply_midi_data_to_panels()
+
+# 传递 MIDI 参考位置到各编辑面板
+func _apply_midi_data_to_panels():
+	notes_edit_panel.set_midi_reference(_midi_beat_positions)
+	effects_edit_panel.set_midi_reference(_midi_beat_positions)
+	shader_edit_panel.set_midi_reference(_midi_beat_positions)
 
 var _last_beats_text: String = ""
 var _last_time_text: String = ""
