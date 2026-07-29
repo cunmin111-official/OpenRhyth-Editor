@@ -1,7 +1,7 @@
 {
 	"auto_save": {
 		"enabled": true,
-		"interval_minutes": 5
+		"interval_minutes": 5.0
 	},
 	"calibration": {
 		"audio_offset_ms": 0.0,

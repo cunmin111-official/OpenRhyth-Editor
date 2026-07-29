@@ -932,6 +932,9 @@ func _on_auto_fill_duration_pressed():
 		return
 	var length = stream.get_length()
 	duration_line_edit.text = str(length)
+	# 显式触发保存状态更新（text_changed 可能在相同值时不触发）
+	chart_data["META"]["duration"] = length
+	mark_unsaved()
 
 # ===================== MIDI 导入相关 =====================
 
