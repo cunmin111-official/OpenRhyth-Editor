@@ -1,15 +1,19 @@
 {
 	"auto_save": {
 		"enabled": true,
-		"interval_minutes": 5.0
+		"interval_minutes": 5
 	},
 	"calibration": {
 		"audio_offset_ms": 0.0,
 		"judge_offset_ms": 0.0
 	},
+	"editor": {
+		"pixels_per_second": 950.0,
+		"subdivision": 4.0
+	},
 	"play": {
 		"fc_ap_indicator": true,
-		"score_display_mode": "accumulate"
+		"score_display_mode": "expectation"
 	},
 	"shortcuts": {
 		"editor": {
@@ -100,7 +104,7 @@
 				"mod_shift": false
 			},
 			"quantize_selected": {
-				"key": 85,
+				"key": 85.0,
 				"mod_alt": false,
 				"mod_ctrl": true,
 				"mod_shift": false
@@ -158,7 +162,7 @@
 				"mod_shift": false
 			},
 			"quantize_selected": {
-				"key": 85,
+				"key": 85.0,
 				"mod_alt": false,
 				"mod_ctrl": true,
 				"mod_shift": false
@@ -224,7 +228,7 @@
 				"mod_shift": false
 			},
 			"quantize_selected": {
-				"key": 85,
+				"key": 85.0,
 				"mod_alt": false,
 				"mod_ctrl": true,
 				"mod_shift": false

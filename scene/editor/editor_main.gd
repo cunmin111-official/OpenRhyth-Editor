@@ -90,6 +90,13 @@ var auto_save_timer: Timer = null
 var last_auto_save_path: String = ""
 
 func _ready():
+	# 从设置加载偏好
+	subdivision = Global.get_editor_subdivision()
+	pixels_per_second = Global.get_editor_pixels_per_second()
+	# 提前保存待恢复的滚动值（后续 update_data 会通过 v_scroll.value=0 触发 _on_any_scroll_changed 覆盖 Global）
+	var initial_scroll = Global.preview_time if Global.preview_time > 0.0 else Global.editor_scroll_position
+	_pending_scroll_restore = initial_scroll  # 直接保存到临时变量，不受 value_changed 影响
+	
 	# 复用 Global 中已 preload 的等宽字体，避免重复运行时加载
 	var mono_font = Global.mono_font
 	if mono_font:
@@ -181,9 +188,14 @@ func _ready():
 	shader_edit_panel.v_scroll.value_changed.connect(_on_any_scroll_changed)
 	
 	if Global.preview_time > 0.0:
+		Global.editor_scroll_position = Global.preview_time
 		notes_edit_panel.v_scroll.value = Global.preview_time
 		effects_edit_panel.v_scroll.value = Global.preview_time
 		shader_edit_panel.v_scroll.value = Global.preview_time
+	elif initial_scroll > 0.0:
+		notes_edit_panel.v_scroll.value = initial_scroll
+		effects_edit_panel.v_scroll.value = initial_scroll
+		shader_edit_panel.v_scroll.value = initial_scroll
 	
 	# 自动保存定时器
 	auto_save_timer = Timer.new()
@@ -203,16 +215,19 @@ func _process(delta: float) -> void:
 		#sync_grid_to_music()
 
 func _on_judge_line_selected():
+	_save_scroll_for_restore()
 	update_metadata_display()
 	if current_mode == EditMode.NOTE:
 		var judge_line_data = get_selected_judge_line_data()
 		notes_edit_panel.update_data(chart_data, judge_line_data)
 		update_notes_panel_settings()
+		_restore_panel_scroll(notes_edit_panel)
 		_apply_midi_data_to_panels()
 	elif current_mode == EditMode.EFFECT:
 		var judge_line_data = get_selected_judge_line_data()
 		effects_edit_panel.update_data(chart_data, judge_line_data)
 		update_notes_panel_settings()
+		_restore_panel_scroll(effects_edit_panel)
 		_apply_midi_data_to_panels()
 	elif current_mode == EditMode.TEXTURE:
 		var judge_line_data = get_selected_judge_line_data()
@@ -259,6 +274,7 @@ func set_mode_highlight(mode: EditMode):
 
 # 模式切换回调
 func _on_meta_manage_button_pressed() -> void:
+	_save_scroll_for_restore()
 	current_mode = EditMode.META
 	set_mode_highlight(current_mode)
 	meta_edit_panel.visible = true
@@ -272,6 +288,7 @@ func _on_meta_manage_button_pressed() -> void:
 	print("切换到 Meta 编辑模式")
 
 func _on_note_manage_button_pressed() -> void:
+	_save_scroll_for_restore()
 	current_mode = EditMode.NOTE
 	set_mode_highlight(current_mode)
 	meta_edit_panel.visible = false
@@ -282,11 +299,13 @@ func _on_note_manage_button_pressed() -> void:
 	var judge_line_data = get_selected_judge_line_data()
 	notes_edit_panel.update_data(chart_data, judge_line_data)
 	update_notes_panel_settings()
+	_restore_panel_scroll(notes_edit_panel)
 	_apply_midi_data_to_panels()
 	update_metadata_display()
 	print("切换到 Note 编辑模式")
 
 func _on_effect_manage_button_pressed() -> void:
+	_save_scroll_for_restore()
 	current_mode = EditMode.EFFECT
 	set_mode_highlight(current_mode)
 	meta_edit_panel.visible = false
@@ -301,10 +320,12 @@ func _on_effect_manage_button_pressed() -> void:
 		if typeof(meta) == TYPE_DICTIONARY:
 			judge_line_data = meta
 	effects_edit_panel.update_data(chart_data, judge_line_data)
+	_restore_panel_scroll(effects_edit_panel)
 	_apply_midi_data_to_panels()
 	print("切换到 Effect 编辑模式")
 
 func _on_texture_manage_button_pressed() -> void:
+	_save_scroll_for_restore()
 	current_mode = EditMode.TEXTURE
 	set_mode_highlight(current_mode)
 	meta_edit_panel.visible = false
@@ -318,10 +339,29 @@ func _on_texture_manage_button_pressed() -> void:
 		var meta = selected.get_metadata(0)
 		if typeof(meta) == TYPE_DICTIONARY:
 			judge_line_data = meta
+		else:
+			# 选中的是分组节点，尝试选中该分组的第一个判定线
+			var child = selected.get_first_child()
+			if child:
+				var child_meta = child.get_metadata(0)
+				if typeof(child_meta) == TYPE_DICTIONARY:
+					judge_line_data = child_meta
+					child.select(0)
+	elif chart_data.get("judgeLineList", []).size() > 0:
+		# 未选中任何项，自动选中第一条判定线
+		var root = judge_line_tree.get_root()
+		if root:
+			var first_group = root.get_first_child()
+			if first_group:
+				var first_line = first_group.get_first_child()
+				if first_line:
+					judge_line_data = first_line.get_metadata(0)
+					first_line.select(0)
 	texture_edit_panel.update_data(chart_data, judge_line_data, current_rwc_path)
 	print("切换到 Texture 编辑模式")
 
 func _on_shader_manage_button_pressed() -> void:
+	_save_scroll_for_restore()
 	current_mode = EditMode.SHADER
 	set_mode_highlight(current_mode)
 	meta_edit_panel.visible = false
@@ -330,10 +370,14 @@ func _on_shader_manage_button_pressed() -> void:
 	texture_edit_panel.visible = false
 	shader_edit_panel.visible = true
 	shader_edit_panel.update_data(chart_data)
+	_restore_panel_scroll(shader_edit_panel)
 	_apply_midi_data_to_panels()
 	print("切换到 Shader 编辑模式")
 
 func _on_return_button_pressed() -> void:
+	# 回主页时重置滚动位置
+	Global.editor_scroll_position = 0.0
+	Global.preview_time = 0.0
 	get_tree().change_scene_to_file("res://scene/start_scene.tscn")
 
 func _on_preview_button_pressed() -> void:
@@ -344,7 +388,9 @@ func _on_preview_button_pressed() -> void:
 		scroll_pos = effects_edit_panel.v_scroll.value
 	elif shader_edit_panel.visible:
 		scroll_pos = shader_edit_panel.v_scroll.value
+	Global.editor_pre_preview_scroll = scroll_pos
 	Global.preview_time = scroll_pos
+	Global.editor_scroll_position = scroll_pos
 	get_tree().change_scene_to_file("res://scene/preview/preview_page.tscn")
 
 # 保存按钮
@@ -419,6 +465,9 @@ func sort_all_events() -> void:
 	for line in line_list:
 		if typeof(line) != TYPE_DICTIONARY:
 			continue
+		# 确保 textures 字段存在
+		if not line.has("textures"):
+			line["textures"] = []
 		# 音符按开始节拍升序排序
 		if line.has("notes") and typeof(line["notes"]) == TYPE_ARRAY:
 			line["notes"].sort_custom(func(a, b):
@@ -480,7 +529,8 @@ func create_new_judge_line() -> Dictionary:
 				"speedEvents": []
 			}
 		],
-		"notes": []
+		"notes": [],
+		"textures": []
 	}
 
 func _on_new_judge_line_button_pressed():
@@ -615,6 +665,7 @@ func _input(event: InputEvent):
 					if val > subdivision:
 						subdivision = val
 						break
+			Global.set_editor_subdivision(subdivision)
 			update_notes_panel_settings()
 			get_viewport().set_input_as_handled()
 		elif Global.is_shortcut_match(event, "editor", "decrease_subdivision"):
@@ -630,14 +681,17 @@ func _input(event: InputEvent):
 					if allowed[i] < subdivision:
 						subdivision = allowed[i]
 						break
+			Global.set_editor_subdivision(subdivision)
 			update_notes_panel_settings()
 			get_viewport().set_input_as_handled()
 		elif Global.is_shortcut_match(event, "editor", "increase_pixels"):
 			pixels_per_second = clamp(pixels_per_second + 50, 50, 3000)
+			Global.set_editor_pixels_per_second(pixels_per_second)
 			update_notes_panel_settings()
 			get_viewport().set_input_as_handled()
 		elif Global.is_shortcut_match(event, "editor", "decrease_pixels"):
 			pixels_per_second = clamp(pixels_per_second - 50, 50, 3000)
+			Global.set_editor_pixels_per_second(pixels_per_second)
 			update_notes_panel_settings()
 			get_viewport().set_input_as_handled()
 		elif Global.is_shortcut_match(event, "editor", "fix_integers"):
@@ -982,6 +1036,28 @@ func _apply_midi_data_to_panels():
 	effects_edit_panel.set_midi_reference(_midi_beat_positions)
 	shader_edit_panel.set_midi_reference(_midi_beat_positions)
 
+# 切换前保存的滚动位置（局部暂存，避免被 _on_any_scroll_changed 覆盖）
+var _pending_scroll_restore: float = -1.0
+
+# 保存当前可见面板的滚动位置到暂存变量
+func _save_scroll_for_restore():
+	if notes_edit_panel.visible:
+		_pending_scroll_restore = notes_edit_panel.v_scroll.value
+	elif effects_edit_panel.visible:
+		_pending_scroll_restore = effects_edit_panel.v_scroll.value
+	elif shader_edit_panel.visible:
+		_pending_scroll_restore = shader_edit_panel.v_scroll.value
+	elif Global.editor_scroll_position > 0.0:
+		_pending_scroll_restore = Global.editor_scroll_position
+	# else: 保留 _pending_scroll_restore 现有值（可能来自 _ready 或之前的保存）
+
+# 恢复面板滚动位置（update_data 会通过 v_scroll.value=0 触发 _on_any_scroll_changed 覆盖 Global）
+func _restore_panel_scroll(panel):
+	var restore_val = _pending_scroll_restore if _pending_scroll_restore >= 0.0 else Global.editor_scroll_position
+	if restore_val > 0.0:
+		panel.v_scroll.value = restore_val
+	_pending_scroll_restore = -1.0
+
 var _last_beats_text: String = ""
 var _last_time_text: String = ""
 
@@ -1045,6 +1121,15 @@ func fix_chart_data_integers():
 		if bpm.has("startTime") and typeof(bpm["startTime"]) == TYPE_ARRAY:
 			var arr = bpm["startTime"]
 			bpm["startTime"] = [int(arr[0]), int(arr[1]), int(arr[2])]
+	# 修复判定线中的贴图数据
+	for line in chart_data.get("judgeLineList", []):
+		if not line.has("textures"):
+			line["textures"] = []
+		for tex in line["textures"]:
+			for time_field in ["startTime", "endTime"]:
+				if tex.has(time_field) and typeof(tex[time_field]) == TYPE_ARRAY:
+					var arr = tex[time_field]
+					tex[time_field] = [int(arr[0]), int(arr[1]), int(arr[2])]
 	# 保存文件
 	if save_chart_file():
 		# 刷新界面
@@ -1145,7 +1230,9 @@ func stop_music():
 	is_music_playing = false
 	print("[音频控制] 停止音乐")
 
-func _on_any_scroll_changed(_value):
+func _on_any_scroll_changed(value):
+	# 跟踪滚动位置
+	Global.editor_scroll_position = value
 	# 如果是自动滚动，不触发停止音乐
 	if is_auto_scrolling:
 		return

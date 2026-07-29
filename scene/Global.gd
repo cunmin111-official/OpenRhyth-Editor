@@ -4,6 +4,10 @@ extends Node
 var selected_rwc_path: String = ""
 var selected_music_path: String = ""
 var preview_time: float = 0.0
+# 编辑器的滚动位置（切换面板/判线时保持，回主页时重置）
+var editor_scroll_position: float = 0.0
+# 进入预览前的编辑器滚动位置（预览播完后回退用）
+var editor_pre_preview_scroll: float = 0.0
 # 等宽字体（用于 JSON 编辑器等）
 var mono_font: Font = null
 
@@ -126,6 +130,12 @@ func _ensure_defaults() -> void:
 		settings["play"]["score_display_mode"] = "accumulate"
 	if not settings["play"].has("fc_ap_indicator"):
 		settings["play"]["fc_ap_indicator"] = true
+	if not settings.has("editor"):
+		settings["editor"] = {}
+	if not settings["editor"].has("subdivision"):
+		settings["editor"]["subdivision"] = 1
+	if not settings["editor"].has("pixels_per_second"):
+		settings["editor"]["pixels_per_second"] = 500
 	var sc = settings["shortcuts"]
 	for page_name in DEFAULT_SHORTCUTS:
 		if not sc.has(page_name):
@@ -188,6 +198,25 @@ func set_auto_save_interval(minutes: int) -> void:
 	if not settings.has("auto_save"):
 		settings["auto_save"] = {"enabled": false, "interval_minutes": 5}
 	settings["auto_save"]["interval_minutes"] = clampi(minutes, 1, 60)
+	save_settings()
+
+# ========== 编辑器偏好设置 ==========
+func get_editor_subdivision() -> int:
+	return settings.get("editor", {}).get("subdivision", 1)
+
+func set_editor_subdivision(val: int) -> void:
+	if not settings.has("editor"):
+		settings["editor"] = {}
+	settings["editor"]["subdivision"] = clampi(val, 1, 32)
+	save_settings()
+
+func get_editor_pixels_per_second() -> float:
+	return settings.get("editor", {}).get("pixels_per_second", 500.0)
+
+func set_editor_pixels_per_second(val: float) -> void:
+	if not settings.has("editor"):
+		settings["editor"] = {}
+	settings["editor"]["pixels_per_second"] = clampf(val, 50.0, 3000.0)
 	save_settings()
 
 # ========== 延迟校准 ==========

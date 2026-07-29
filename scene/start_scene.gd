@@ -4,6 +4,7 @@ extends Control
 @onready var file_path_label = $FilePathLabel
 @onready var music_picker = $MusicPicker
 @onready var music_path_label = $MusicPathLabel
+@onready var new_chart_picker = $NewChartPicker
 
 func _ready():
 	# 谱面文件选择器设置
@@ -64,3 +65,43 @@ func _on_music_picker_file_selected(path: String):
 	var relative_path = get_relative_path(path)
 	Global.selected_music_path = relative_path
 	music_path_label.text = relative_path
+
+func _on_new_file_button_pressed():
+	new_chart_picker.popup()
+
+func _on_new_chart_picker_file_selected(path: String):
+	# 确保扩展名为 .rwc
+	if not path.to_lower().ends_with(".rwc"):
+		path += ".rwc"
+	
+	var relative_path = get_relative_path(path)
+	
+	# 如果已存在则覆盖
+	if FileAccess.file_exists(path):
+		print("[新建谱面] 文件已存在，覆盖: ", path)
+	
+	# 创建默认谱面模板
+	var default_chart = {
+		"BPMList": [
+			{"bpm": 120.0, "startTime": [0, 0, 1]}
+		],
+		"META": {
+			"offset": 0,
+			"notes": 0,
+			"duration": 0.0
+		},
+		"judgeLineList": []
+	}
+	
+	var json_string = JSON.stringify(default_chart, "\t")
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		print("[新建谱面] 无法写入文件: ", path)
+		return
+	file.store_string(json_string)
+	file.close()
+	
+	# 自动选中新建的文件
+	Global.selected_rwc_path = relative_path
+	file_path_label.text = relative_path
+	print("[新建谱面] 已创建: ", relative_path)

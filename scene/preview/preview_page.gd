@@ -1048,7 +1048,8 @@ func start_playback() -> void:
 func pause_playback() -> void:
 	is_playing = false
 	if audio_player.playing:
-		current_time = audio_player.get_playback_position()
+		var audio_offset_sec = Global.get_audio_offset_ms() / 1000.0
+		current_time = audio_player.get_playback_position() + audio_offset_sec
 		audio_player.stop()
 	for line_info in judge_line_nodes:
 		var vp = line_info.get("video_player_2d")
@@ -1110,7 +1111,11 @@ func _on_return_button_pressed() -> void:
 		audio_player.stop()
 	is_playing = false
 	stop_all_videos()
-	Global.preview_time = current_time
+	# 如果预览已播完（current_time >= duration），回退到进入预览前的位置
+	if current_time >= duration and Global.editor_pre_preview_scroll > 0.0 and Global.editor_pre_preview_scroll < duration:
+		Global.preview_time = Global.editor_pre_preview_scroll
+	else:
+		Global.preview_time = current_time
 	get_tree().change_scene_to_file("res://scene/editor/editor_main.tscn")
 
 func stop_all_videos() -> void:

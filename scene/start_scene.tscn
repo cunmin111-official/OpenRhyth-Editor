@@ -56,6 +56,15 @@ offset_bottom = 392.0
 theme_override_font_sizes/font_size = 32
 text = "选择谱面"
 
+[node name="NewFileButton" type="Button" parent="." unique_id=1054624634]
+layout_mode = 0
+offset_left = 420.0
+offset_top = 324.0
+offset_right = 592.0
+offset_bottom = 392.0
+theme_override_font_sizes/font_size = 32
+text = "新建谱面"
+
 [node name="Title" type="Label" parent="." unique_id=437183870]
 layout_mode = 0
 offset_left = 760.0
@@ -63,7 +72,7 @@ offset_top = 233.0
 offset_right = 1249.0
 offset_bottom = 313.0
 theme_override_font_sizes/font_size = 48
-text = "开源洛盛 v0.4.0(pre1)"
+text = "开源洛盛 v0.4.1"
 
 [node name="VersionLabel" type="Label" parent="." unique_id=180034980]
 layout_mode = 0
@@ -113,9 +122,17 @@ file_mode = 0
 access = 2
 filters = PackedStringArray("*.mp3", "*.wav", "*.ogg")
 
+[node name="NewChartPicker" type="FileDialog" parent="." unique_id=772079567]
+oversampling_override = 1.0
+title = "新建谱面"
+access = 2
+filters = PackedStringArray("*.rwc")
+
 [connection signal="pressed" from="PlayFile" to="." method="_on_play_file_pressed"]
 [connection signal="pressed" from="EditFile" to="." method="_on_edit_file_pressed"]
 [connection signal="pressed" from="SettingsButton" to="." method="_on_settings_pressed"]
 [connection signal="pressed" from="SelectFileButton" to="." method="_on_select_file_button_pressed"]
+[connection signal="pressed" from="NewFileButton" to="." method="_on_new_file_button_pressed"]
 [connection signal="file_selected" from="FilePicker" to="." method="_on_file_picker_file_selected"]
 [connection signal="pressed" from="SelectMusicButton" to="." method="_on_select_music_button_pressed"]
+[connection signal="file_selected" from="NewChartPicker" to="." method="_on_new_chart_picker_file_selected"]

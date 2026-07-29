@@ -29,11 +29,19 @@ func _ready():
 
 func update_data(new_chart_data: Dictionary, new_judge_line = null, chart_file_path: String = ""):
 	chart_data = new_chart_data
-	current_judge_line = new_judge_line if typeof(new_judge_line) == TYPE_DICTIONARY else {}
 	current_chart_path = chart_file_path
-	if not current_judge_line.has("textures"):
-		current_judge_line["textures"] = []
-	current_textures = current_judge_line["textures"]
+	# 如果传入的判定线数据为空，尝试从 chart_data 中找到第一个有 texture 的或新建
+	if new_judge_line == null or (typeof(new_judge_line) == TYPE_DICTIONARY and new_judge_line.is_empty()):
+		current_judge_line = {}
+	else:
+		current_judge_line = new_judge_line if typeof(new_judge_line) == TYPE_DICTIONARY else {}
+	if current_judge_line.is_empty():
+		# 尝试从 Tree 元数据自动恢复（通过 editor_main 中转）
+		current_textures = []
+	else:
+		if not current_judge_line.has("textures"):
+			current_judge_line["textures"] = []
+		current_textures = current_judge_line["textures"]
 	refresh_tree()
 
 func refresh_tree():
