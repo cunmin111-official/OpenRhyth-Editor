@@ -130,6 +130,14 @@ func _ensure_defaults() -> void:
 		settings["play"]["score_display_mode"] = "accumulate"
 	if not settings["play"].has("fc_ap_indicator"):
 		settings["play"]["fc_ap_indicator"] = true
+	if not settings["play"].has("note_size"):
+		settings["play"]["note_size"] = 1.0
+	if not settings["play"].has("judge_effect_mode"):
+		settings["play"]["judge_effect_mode"] = "frame"
+	if not settings["play"].has("judge_effect_curve"):
+		settings["play"]["judge_effect_curve"] = {"start": 0.8, "peak": 1.4, "peak_time": 0.3, "end": 0.5}
+	if not settings["play"].has("judge_effect_fade_in_ms"):
+		settings["play"]["judge_effect_fade_in_ms"] = 50
 	if not settings.has("editor"):
 		settings["editor"] = {}
 	if not settings["editor"].has("subdivision"):
@@ -256,6 +264,103 @@ func set_fc_ap_indicator(enabled: bool) -> void:
 		settings["play"] = {}
 	settings["play"]["fc_ap_indicator"] = enabled
 	save_settings()
+
+func get_note_size() -> float:
+	# 通用倍数缩放，默认 1.0（1 倍）
+	return settings.get("play", {}).get("note_size", 1.0)
+
+func set_note_size(val: float) -> void:
+	if not settings.has("play"):
+		settings["play"] = {}
+	settings["play"]["note_size"] = clampf(val, 0.1, 5.0)
+	save_settings()
+
+# 各类型音符的基础尺寸（用户可见值，默认 1.0）
+# 内部乘以 PIXEL_SIZE_SCALE 转换为 Sprite3D 的 pixel_size
+const NOTE_TYPES := ["tap", "drag", "hold_body", "hold_head"]
+const PIXEL_SIZE_SCALE: float = 0.05
+const DEFAULT_TYPE_SIZE: float = 1.0
+
+func get_note_type_size(type_name: String) -> float:
+	# 返回类型的基础尺寸（用户可见值）
+	if type_name not in NOTE_TYPES:
+		return DEFAULT_TYPE_SIZE
+	var sizes = settings.get("play", {}).get("note_type_sizes", {})
+	return sizes.get(type_name, DEFAULT_TYPE_SIZE)
+
+func set_note_type_size(type_name: String, val: float) -> void:
+	if type_name not in NOTE_TYPES:
+		return
+	if not settings.has("play"):
+		settings["play"] = {}
+	if not settings["play"].has("note_type_sizes"):
+		settings["play"]["note_type_sizes"] = {}
+	settings["play"]["note_type_sizes"][type_name] = clampf(val, 0.1, 10.0)
+	save_settings()
+
+func get_effective_note_type_size(type_name: String) -> float:
+	# 有效 pixel_size = 通用倍数 * 类型基础尺寸 * 缩放系数
+	return get_note_size() * get_note_type_size(type_name) * PIXEL_SIZE_SCALE
+
+# ========== 判定特效设置 ==========
+# 分级颜色映射（miss 不显示）
+const JUDGE_GRADE_COLORS: Dictionary = {
+	"perfect1": Color("#1685A9"),
+	"perfect": Color("#197855"),
+	"good": Color("#D12920"),
+}
+
+# 特效模式："frame" 逐帧动画 / "original" 原动画
+func get_judge_effect_mode() -> String:
+	return settings.get("play", {}).get("judge_effect_mode", "frame")
+
+func set_judge_effect_mode(mode: String) -> void:
+	if mode not in ["frame", "original"]:
+		return
+	if not settings.has("play"):
+		settings["play"] = {}
+	settings["play"]["judge_effect_mode"] = mode
+	save_settings()
+
+func get_judge_effect_curve() -> Dictionary:
+	return settings.get("play", {}).get("judge_effect_curve", {"start": 0.8, "peak": 1.4, "peak_time": 0.3, "end": 0.5})
+
+func set_judge_effect_curve(val: Dictionary) -> void:
+	if not settings.has("play"):
+		settings["play"] = {}
+	settings["play"]["judge_effect_curve"] = {
+		"start": clampf(float(val.get("start", 0.8)), 0.1, 3.0),
+		"peak": clampf(float(val.get("peak", 1.4)), 0.1, 3.0),
+		"peak_time": clampf(float(val.get("peak_time", 0.3)), 0.0, 1.0),
+		"end": clampf(float(val.get("end", 0.5)), 0.1, 3.0),
+	}
+	save_settings()
+
+# Hold 判定特效渐显时长（毫秒，默认 50ms）
+func get_judge_effect_fade_in_ms() -> int:
+	return int(settings.get("play", {}).get("judge_effect_fade_in_ms", 50))
+
+func set_judge_effect_fade_in_ms(ms: int) -> void:
+	if not settings.has("play"):
+		settings["play"] = {}
+	settings["play"]["judge_effect_fade_in_ms"] = clampi(ms, 0, 1000)
+	save_settings()
+
+# 计算大小曲线在归一化时间 t 处的倍率（静态，play/preview/设置预览共用）
+static func eval_scale_curve(curve: Dictionary, t: float) -> float:
+	var start = float(curve.get("start", 0.8))
+	var peak = float(curve.get("peak", 1.4))
+	var peak_time = clampf(float(curve.get("peak_time", 0.3)), 0.0, 1.0)
+	var end = float(curve.get("end", 0.5))
+	t = clampf(t, 0.0, 1.0)
+	if peak_time <= 0.0:
+		return peak
+	if t <= peak_time:
+		return lerpf(start, peak, t / peak_time)
+	var denom = 1.0 - peak_time
+	if denom <= 0.0:
+		return peak
+	return lerpf(peak, end, (t - peak_time) / denom)
 
 # FC/AP 指示器状态计算（静态函数，play 和 preview 共享）
 # 返回值：{color: Color, combo_text: String}

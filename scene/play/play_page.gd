@@ -1,8 +1,38 @@
 extends Control
 
-const HOLD_TEXTURE_HEIGHT_PX: float = 400.0
-const HOLD_SPRITE_PIXEL_SIZE: float = 0.05
 const VIDEO_EXTS: Array = ["ogv"]
+
+# Hold 裁剪着色器代码
+# UV.y=0(纹理顶部=hold起点) UV.y=1(纹理底部=hold终点)
+# clip_uv: UV.y 超过此值的底部像素被裁掉（已判定部分）
+const HOLD_CLIP_SHADER_CODE: String = """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_alpha_opaque;
+uniform float clip_uv : hint_range(0.0, 1.0) = 1.0;
+uniform sampler2D texture_sprite : source_color;
+void fragment() {
+	vec4 tex = texture(texture_sprite, UV);
+	ALBEDO = tex.rgb;
+	ALPHA = tex.a;
+	if (UV.y > clip_uv) {
+		ALPHA = 0.0;
+	}
+}
+"""
+
+# 判定特效着色器：原图灰度 × 分级颜色
+const JUDGE_EFFECT_SHADER_CODE: String = """
+shader_type spatial;
+render_mode unshaded;
+uniform vec4 grade_color : source_color = vec4(1.0);
+uniform sampler2D texture_sprite : source_color;
+void fragment() {
+	vec4 tex = texture(texture_sprite, UV);
+	float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
+	ALBEDO = grade_color.rgb * lum;
+	ALPHA = tex.a;
+}
+"""
 
 # 预加载纹理
 var preloaded_textures: Dictionary = {}
@@ -11,6 +41,24 @@ var judge_textures = {
 	"perfect": preload("res://res/judgeEffects/perfect.png"),
 	"good": preload("res://res/judgeEffects/good.png"),
 }
+# 逐帧判定特效素材（运行时 load，避免未导入资源在解析期报错）
+var judge_frame_textures: Array = []
+
+func _load_judge_frame_textures() -> void:
+	judge_frame_textures = []
+	for i in range(6):
+		var path = "res://res/judgeEffects/judge%d.png" % i
+		# 优先用 ResourceLoader 加载（已导入，编辑器与打包后均可用）
+		var tex = load(path)
+		if tex is Texture2D:
+			judge_frame_textures.append(tex)
+			continue
+		# 兜底：直接读 PNG（未导入场景）
+		var img = Image.load_from_file(path)
+		if img:
+			judge_frame_textures.append(ImageTexture.create_from_image(img))
+		else:
+			print("[游玩] 加载判定帧失败: judge%d.png" % i)
 var note_textures = {
 	"hold_body": preload("res://res/note/hold.png"),
 	"hold_head": preload("res://res/note/hold_head.png"),
@@ -72,6 +120,7 @@ func _ready() -> void:
 	load_audio()
 	preload_textures()
 	build_3d_scene()
+	_load_judge_frame_textures()
 	_init_effect_pool()
 	real_notes_data.sort()
 	build_ui_labels()
@@ -325,16 +374,17 @@ func build_3d_scene() -> void:
 				hold_body.name = "HoldBody"
 				hold_body.texture = note_textures["hold_body"]
 				hold_body.transparent = true
-				hold_body.pixel_size = 0.05
+				hold_body.pixel_size = Global.get_effective_note_type_size("hold_body")
 				hold_body.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
 				hold_body.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+				# 无着色器，裁剪在 update_hold_note 中通过 scale/position 实现
 				note_group.add_child(hold_body)
 
 				var hold_head = Sprite3D.new()
 				hold_head.name = "HoldHead"
 				hold_head.texture = note_textures["hold_head"]
 				hold_head.transparent = true
-				hold_head.pixel_size = 0.05
+				hold_head.pixel_size = Global.get_effective_note_type_size("hold_head")
 				hold_head.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
 				hold_head.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 				note_group.add_child(hold_head)
@@ -352,7 +402,12 @@ func build_3d_scene() -> void:
 				elif note_type == 2:
 					sprite.texture = note_textures["drag"]
 				sprite.transparent = true
-				sprite.pixel_size = 0.05
+				if note_type == 1:
+					sprite.pixel_size = Global.get_effective_note_type_size("tap")
+				elif note_type == 2:
+					sprite.pixel_size = Global.get_effective_note_type_size("drag")
+				else:
+					sprite.pixel_size = Global.get_note_size() * Global.PIXEL_SIZE_SCALE
 				sprite.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
 				sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 				note_group.add_child(sprite)
@@ -559,6 +614,8 @@ func auto_judge_miss(note_data: Dictionary) -> void:
 # ========== 判定特效对象池（提前创建，运行时复用，避免频繁 new/queue_free） ==========
 const EFFECT_POOL_SIZE: int = 32
 var _effect_pool: Array = [] # 空闲可复用的特效 Sprite3D
+# 逐帧动画运行中的特效：instance_id -> {sprite, elapsed, total, frame_duration, curve, holding}
+var _judge_effect_animations: Dictionary = {}
 
 func _init_effect_pool() -> void:
 	for i in range(EFFECT_POOL_SIZE):
@@ -570,6 +627,16 @@ func _new_effect_sprite() -> Sprite3D:
 	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	sprite.pixel_size = 0.05
 	sprite.visible = false
+	# 逐帧动画用灰度×颜色着色器
+	var mat = ShaderMaterial.new()
+	var shader = Shader.new()
+	shader.code = JUDGE_EFFECT_SHADER_CODE
+	mat.shader = shader
+	mat.set_shader_parameter("grade_color", Color.WHITE)
+	if not judge_frame_textures.is_empty():
+		mat.set_shader_parameter("texture_sprite", judge_frame_textures[0])
+	sprite.material_override = mat
+	sprite.set_meta("judge_mat", mat)
 	world_3d.add_child(sprite)
 	return sprite
 
@@ -588,11 +655,15 @@ func _release_effect_sprite(sprite: Sprite3D) -> void:
 func spawn_judge_effect(world_pos: Vector3, grade: String, for_hold: bool = false) -> Sprite3D:
 	if grade == "" or grade == "miss":
 		return null
+	if Global.get_judge_effect_mode() == "frame":
+		return _spawn_frame_judge_effect(world_pos, grade, for_hold)
+	# 原动画模式
 	var tex = judge_textures.get(grade)
 	if tex == null:
 		return null
 
 	var sprite = _acquire_effect_sprite()
+	sprite.material_override = null # 原动画不使用灰度着色器
 	sprite.texture = tex
 	sprite.position = world_pos
 	sprite.modulate = Color(1, 1, 1, 1.0)
@@ -609,11 +680,88 @@ func spawn_judge_effect(world_pos: Vector3, grade: String, for_hold: bool = fals
 	return sprite
 
 func fade_hold_effect(sprite: Sprite3D) -> void:
-	if sprite == null:
+	if sprite == null or not is_instance_valid(sprite):
 		return
-	var tween = create_tween()
-	tween.tween_property(sprite, "modulate", Color(1, 1, 1, 0.0), 0.5)
-	tween.tween_callback(_release_effect_sprite.bind(sprite))
+	var id = sprite.get_instance_id()
+	if _judge_effect_animations.has(id):
+		# Hold 结束：重置为从第 0 帧播放完整动画（含大小曲线），播完由 _update_judge_effects 归还对象池
+		var anim: Dictionary = _judge_effect_animations[id]
+		anim["holding"] = false
+		anim["elapsed"] = 0.0
+		sprite.modulate = Color(1, 1, 1, 1.0)
+	else:
+		# 无逐帧动画条目（原动画模式）：退化为渐隐
+		var tween = create_tween()
+		tween.tween_property(sprite, "modulate", Color(1, 1, 1, 0.0), 0.5)
+		tween.tween_callback(_release_effect_sprite.bind(sprite))
+
+# 逐帧判定特效：judge0~judge5 每帧 20ms，播放期间按大小曲线放大并淡出
+func _spawn_frame_judge_effect(world_pos: Vector3, grade: String, for_hold: bool) -> Sprite3D:
+	if judge_frame_textures.is_empty():
+		return null
+	var grade_color: Color = Global.JUDGE_GRADE_COLORS.get(grade, Color.WHITE)
+	var sprite = _acquire_effect_sprite()
+	var mat = sprite.get_meta("judge_mat")
+	sprite.material_override = mat
+	if mat is ShaderMaterial:
+		mat.set_shader_parameter("grade_color", grade_color)
+		mat.set_shader_parameter("texture_sprite", judge_frame_textures[0])
+	sprite.texture = judge_frame_textures[0]
+	sprite.position = world_pos
+	sprite.scale = Vector3.ONE
+	sprite.modulate = Color(1, 1, 1, 1.0)
+	sprite.visible = true
+	_judge_effect_animations[sprite.get_instance_id()] = {
+		"sprite": sprite,
+		"elapsed": 0.0,
+		"total": 0.2,
+		"frame_duration": 0.02,
+		"curve": Global.get_judge_effect_curve(),
+		"holding": for_hold,
+	}
+	return sprite
+
+# 每帧推进逐帧判定特效动画
+func _update_judge_effects(delta: float) -> void:
+	if _judge_effect_animations.is_empty():
+		return
+	for id in _judge_effect_animations.keys():
+		var anim: Dictionary = _judge_effect_animations[id]
+		var sprite: Sprite3D = anim["sprite"]
+		if not is_instance_valid(sprite):
+			_judge_effect_animations.erase(id)
+			continue
+		anim["elapsed"] += delta
+		var elapsed: float = anim["elapsed"]
+		var total: float = anim["total"]
+		if anim.get("holding", false):
+			# Hold 进行中：保持第 0 帧，尺寸按曲线放大到峰值后保持，渐显结束后由 fade_hold_effect 再播放完整动画
+			var t = clampf(elapsed / total, 0.0, 1.0)
+			var peak_time: float = float(anim["curve"].get("peak_time", 0.3))
+			var scale_val = Global.eval_scale_curve(anim["curve"], minf(t, peak_time))
+			sprite.scale = Vector3(scale_val, scale_val, scale_val)
+			# 渐显：默认 50ms，可在设置中调节
+			var fade_in_s = float(Global.get_judge_effect_fade_in_ms()) / 1000.0
+			var alpha = 1.0 if fade_in_s <= 0.0 else clampf(elapsed / fade_in_s, 0.0, 1.0)
+			sprite.modulate = Color(1, 1, 1, alpha)
+			continue
+		if elapsed >= total:
+			_release_effect_sprite(sprite)
+			_judge_effect_animations.erase(id)
+			continue
+		var t = clampf(elapsed / total, 0.0, 1.0)
+		# 第 0 帧显示 50ms，其余帧按 frame_duration（20ms）
+		var frame_idx = 0
+		if elapsed >= 0.05:
+			frame_idx = clampi(1 + int((elapsed - 0.05) / anim["frame_duration"]), 1, judge_frame_textures.size() - 1)
+		sprite.texture = judge_frame_textures[frame_idx]
+		var mat = sprite.material_override
+		if mat is ShaderMaterial:
+			mat.set_shader_parameter("texture_sprite", judge_frame_textures[frame_idx])
+		var scale_val = Global.eval_scale_curve(anim["curve"], t)
+		sprite.scale = Vector3(scale_val, scale_val, scale_val)
+		# 淡出
+		sprite.modulate = Color(1, 1, 1, 1.0 - t)
 
 func process_input_judgment() -> void:
 	if not is_playing:
@@ -784,6 +932,7 @@ func update_hold_effect_positions() -> void:
 			effect.global_position = line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
 
 func _process(delta: float) -> void:
+	_update_judge_effects(delta)
 	if is_playing:
 		if audio_player.playing:
 			var audio_offset_sec = Global.get_audio_offset_ms() / 1000.0
@@ -1286,15 +1435,25 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 	var y_start = note_speed * (_speed_cumulative(speed_cache, speed_events, start_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
 	var y_end = note_speed * (_speed_cumulative(speed_cache, speed_events, end_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
 
-	var clip_start = max(y_start, 0.0)
-	var clip_end = max(y_end, 0.0)
-	var clip_len = clip_end - clip_start
-	var clip_mid = (clip_start + clip_end) / 2.0
+	# Hold 体：region_rect 只显示未判定部分的纹理，保持全长度比例不压缩
+	var full_len = y_end - y_start
+	var tex_h = body.texture.get_size().y
+	var pixel_s = Global.get_effective_note_type_size("hold_body")
 
-	if clip_len > 0.01:
-		body.visible = true
-		body.position = Vector3(pos_x, clip_mid, 0.0)
-		body.scale = Vector3(1.0, max(clip_len / (HOLD_TEXTURE_HEIGHT_PX * HOLD_SPRITE_PIXEL_SIZE), 0.01), 1.0)
+	if full_len > 0.01:
+		var unplayed_frac = clampf(max(y_end, 0.0) / full_len, 0.0, 1.0)
+		if unplayed_frac > 0.001:
+			body.visible = true
+			body.centered = false
+			body.region_enabled = true
+			var tex_w = body.texture.get_size().x
+			body.region_rect = Rect2(0, 0, tex_w, tex_h * unplayed_frac)
+			# 全长度 scale 保持纹理比例
+			body.scale = Vector3(1.0, full_len / (tex_h * pixel_s), 1.0)
+			# centered=false：top-left 为 position，左上角对齐到 visible_start
+			body.position = Vector3(pos_x - tex_w * pixel_s / 2.0, max(y_start, 0.0), 0.0)
+		else:
+			body.visible = false
 	else:
 		body.visible = false
 

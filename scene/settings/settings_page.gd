@@ -19,6 +19,42 @@ var judge_input: LineEdit
 var _audio_updating: bool = false
 var _judge_updating: bool = false
 
+# 大小曲线预览控件（绘制 scale(时间) 曲线）
+class ScaleCurvePreview extends Control:
+	var curve: Dictionary = {}
+	
+	func _draw() -> void:
+		var w = size.x
+		var h = size.y
+		draw_rect(Rect2(0, 0, w, h), Color(0.12, 0.12, 0.14, 0.9))
+		draw_rect(Rect2(0, 0, w, h), Color(0.5, 0.5, 0.5, 0.6), false, 1.0)
+		var left = 24.0
+		var right = w - 10.0
+		var top = 10.0
+		var bottom = h - 24.0
+		# 坐标轴
+		draw_line(Vector2(left, top), Vector2(left, bottom), Color(0.6, 0.6, 0.6, 0.8))
+		draw_line(Vector2(left, bottom), Vector2(right, bottom), Color(0.6, 0.6, 0.6, 0.8))
+		# 基准线 scale=1.0
+		var y_base = bottom - (bottom - top) * (1.0 / 3.0)
+		draw_line(Vector2(left, y_base), Vector2(right, y_base), Color(0.35, 0.35, 0.35, 0.7), 1.0)
+		# 曲线
+		var pts: Array = []
+		var steps = 60
+		for i in range(steps + 1):
+			var t = float(i) / steps
+			var s = Global.eval_scale_curve(curve, t)
+			var x = left + (right - left) * t
+			var y = bottom - (bottom - top) * clampf(s / 3.0, 0.0, 1.0)
+			pts.append(Vector2(x, y))
+		for i in range(pts.size() - 1):
+			draw_line(pts[i], pts[i + 1], Color(0.25, 0.75, 1.0, 1.0), 2.0)
+		# 轴标签
+		var font = ThemeDB.fallback_font
+		draw_string(font, Vector2(left - 4, bottom + 14), "0", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.7, 0.7, 0.7))
+		draw_string(font, Vector2(right - 14, bottom + 14), "1", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.7, 0.7, 0.7))
+		draw_string(font, Vector2(2, top + 10), "3x", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.7, 0.7, 0.7))
+
 func _ready() -> void:
 	_build_ui()
 	
@@ -137,13 +173,22 @@ func _build_ui() -> void:
 	var play_tab = Control.new()
 	play_tab.name = "游玩"
 	tab_container.add_child(play_tab)
+
+	var scroll = ScrollContainer.new()
+	scroll.anchor_right = 1.0
+	scroll.anchor_bottom = 1.0
+	play_tab.add_child(scroll)
+
+	var play_content = Control.new()
+	play_content.custom_minimum_size = Vector2(1860, 1300)
+	scroll.add_child(play_content)
 	
 	# ---- 分数显示偏好 ----
 	var score_title = Label.new()
 	score_title.text = "分数显示偏好"
 	score_title.position = Vector2(50, 30)
 	score_title.add_theme_font_size_override("font_size", 28)
-	play_tab.add_child(score_title)
+	play_content.add_child(score_title)
 	
 	var score_desc = Label.new()
 	score_desc.text = "选择游玩和预览页面中分数的计算方式"
@@ -151,14 +196,14 @@ func _build_ui() -> void:
 	score_desc.add_theme_font_size_override("font_size", 16)
 	score_desc.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 	score_desc.custom_minimum_size = Vector2(600, 30)
-	play_tab.add_child(score_desc)
+	play_content.add_child(score_desc)
 	
 	var score_mode_group = BoxContainer.new()
 	score_mode_group.position = Vector2(50, 110)
 	score_mode_group.size = Vector2(500, 100)
 	score_mode_group.add_theme_constant_override("separation", 4)
 	score_mode_group.vertical = true
-	play_tab.add_child(score_mode_group)
+	play_content.add_child(score_mode_group)
 	
 	var score_accumulate = CheckButton.new()
 	score_accumulate.text = "累加模式"
@@ -207,7 +252,7 @@ func _build_ui() -> void:
 	fc_title.text = "FC/AP 指示器"
 	fc_title.position = Vector2(50, 240)
 	fc_title.add_theme_font_size_override("font_size", 28)
-	play_tab.add_child(fc_title)
+	play_content.add_child(fc_title)
 	
 	var fc_desc = Label.new()
 	fc_desc.text = "根据判定情况改变准度颜色和连击提示文本"
@@ -215,7 +260,7 @@ func _build_ui() -> void:
 	fc_desc.add_theme_font_size_override("font_size", 16)
 	fc_desc.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 	fc_desc.custom_minimum_size = Vector2(600, 30)
-	play_tab.add_child(fc_desc)
+	play_content.add_child(fc_desc)
 	
 	var fc_toggle = CheckButton.new()
 	fc_toggle.text = "开启 FC/AP 指示器"
@@ -224,14 +269,232 @@ func _build_ui() -> void:
 	fc_toggle.toggled.connect(func(enabled: bool):
 		Global.set_fc_ap_indicator(enabled)
 	)
-	play_tab.add_child(fc_toggle)
+	play_content.add_child(fc_toggle)
 	
 	var fc_note = Label.new()
 	fc_note.text = "无双：全 Perfect1 | 宗师：全 Perfect+ | 豪侠：无 Miss | 连击：出现 Miss"
 	fc_note.position = Vector2(70, 360)
 	fc_note.add_theme_font_size_override("font_size", 14)
 	fc_note.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-	play_tab.add_child(fc_note)
+	play_content.add_child(fc_note)
+	
+	# ---- 音符大小（倍数缩放） ----
+	var ns_title = Label.new()
+	ns_title.text = "音符大小"
+	ns_title.position = Vector2(50, 410)
+	ns_title.add_theme_font_size_override("font_size", 28)
+	play_content.add_child(ns_title)
+	
+	var ns_desc = Label.new()
+	ns_desc.text = "全局倍数缩放（作用于各类型基础尺寸之上，默认 1.0 倍；基础尺寸默认 1.0）"
+	ns_desc.position = Vector2(50, 445)
+	ns_desc.add_theme_font_size_override("font_size", 16)
+	ns_desc.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	ns_desc.custom_minimum_size = Vector2(700, 30)
+	play_content.add_child(ns_desc)
+	
+	var ns_slider = HSlider.new()
+	ns_slider.position = Vector2(50, 480)
+	ns_slider.size = Vector2(400, 40)
+	ns_slider.min_value = 0.1
+	ns_slider.max_value = 5.0
+	ns_slider.step = 0.05
+	ns_slider.value = Global.get_note_size()
+	play_content.add_child(ns_slider)
+	
+	var ns_value_label = Label.new()
+	ns_value_label.text = "%.2f×" % Global.get_note_size()
+	ns_value_label.position = Vector2(470, 480)
+	ns_value_label.add_theme_font_size_override("font_size", 22)
+	ns_value_label.custom_minimum_size = Vector2(120, 40)
+	play_content.add_child(ns_value_label)
+	
+	ns_slider.value_changed.connect(func(val: float):
+		Global.set_note_size(val)
+		ns_value_label.text = "%.2f×" % val
+	)
+
+	# ---- 各类型音符基础尺寸 ----
+	var type_sep = ColorRect.new()
+	type_sep.position = Vector2(50, 530)
+	type_sep.size = Vector2(800, 2)
+	type_sep.color = Color(0.4, 0.4, 0.4, 0.5)
+	play_content.add_child(type_sep)
+
+	var nst_title = Label.new()
+	nst_title.text = "各类型音符基础尺寸"
+	nst_title.position = Vector2(50, 540)
+	nst_title.add_theme_font_size_override("font_size", 22)
+	play_content.add_child(nst_title)
+
+	var note_type_configs = [
+		{"key": "tap", "label": "Tap（单击）"},
+		{"key": "drag", "label": "Drag（拖动）"},
+		{"key": "hold_body", "label": "Hold Body（长按主体）"},
+		{"key": "hold_head", "label": "Hold Head（长按头）"},
+	]
+
+	var type_start_y = 570
+	var type_row_height = 60
+
+	for i in range(note_type_configs.size()):
+		var cfg = note_type_configs[i]
+		var row_y = type_start_y + i * type_row_height
+
+		# 类型标签
+		var type_label = Label.new()
+		type_label.text = cfg["label"]
+		type_label.position = Vector2(50, row_y + 8)
+		type_label.add_theme_font_size_override("font_size", 18)
+		type_label.custom_minimum_size = Vector2(200, 30)
+		play_content.add_child(type_label)
+
+		# 滑块
+		var type_slider = HSlider.new()
+		type_slider.position = Vector2(260, row_y + 5)
+		type_slider.size = Vector2(350, 40)
+		type_slider.min_value = 0.1
+		type_slider.max_value = 10.0
+		type_slider.step = 0.1
+		type_slider.value = Global.get_note_type_size(cfg["key"])
+		play_content.add_child(type_slider)
+
+		# 值标签
+		var type_val_label = Label.new()
+		type_val_label.text = "%.1f" % type_slider.value
+		type_val_label.position = Vector2(620, row_y + 8)
+		type_val_label.add_theme_font_size_override("font_size", 18)
+		type_val_label.custom_minimum_size = Vector2(80, 30)
+		play_content.add_child(type_val_label)
+
+		# 连接信号
+		type_slider.value_changed.connect(func(val: float, key = cfg["key"], label = type_val_label):
+			Global.set_note_type_size(key, val)
+			label.text = "%.1f" % val
+		)
+
+	# ---- 判定特效 ----
+	var je_sep = ColorRect.new()
+	je_sep.position = Vector2(50, 810)
+	je_sep.size = Vector2(800, 2)
+	je_sep.color = Color(0.4, 0.4, 0.4, 0.5)
+	play_content.add_child(je_sep)
+
+	var je_title = Label.new()
+	je_title.text = "判定特效"
+	je_title.position = Vector2(50, 820)
+	je_title.add_theme_font_size_override("font_size", 28)
+	play_content.add_child(je_title)
+
+	# 特效模式
+	var mode_label = Label.new()
+	mode_label.text = "特效模式"
+	mode_label.position = Vector2(50, 870)
+	mode_label.add_theme_font_size_override("font_size", 18)
+	mode_label.custom_minimum_size = Vector2(200, 30)
+	play_content.add_child(mode_label)
+
+	var mode_option = OptionButton.new()
+	mode_option.position = Vector2(260, 865)
+	mode_option.size = Vector2(220, 36)
+	mode_option.add_item("逐帧动画", 0)
+	mode_option.add_item("原动画", 1)
+	mode_option.select(0 if Global.get_judge_effect_mode() == "frame" else 1)
+	play_content.add_child(mode_option)
+
+	# 大小曲线预览
+	var je_curve = Global.get_judge_effect_curve()
+	var curve_preview = ScaleCurvePreview.new()
+	curve_preview.curve = je_curve
+	curve_preview.position = Vector2(540, 860)
+	curve_preview.size = Vector2(360, 130)
+	play_content.add_child(curve_preview)
+
+	var curve_label = Label.new()
+	curve_label.text = "大小曲线（时间 → 倍率）"
+	curve_label.position = Vector2(50, 918)
+	curve_label.add_theme_font_size_override("font_size", 18)
+	curve_label.custom_minimum_size = Vector2(300, 30)
+	play_content.add_child(curve_label)
+
+	var _refresh_curve = func():
+		Global.set_judge_effect_curve(je_curve)
+		curve_preview.curve = je_curve
+		curve_preview.queue_redraw()
+
+	# 曲线参数滑块
+	var curve_params = [
+		{"key": "start", "label": "起始大小", "min": 0.1, "max": 3.0, "step": 0.05},
+		{"key": "peak", "label": "峰值大小", "min": 0.1, "max": 3.0, "step": 0.05},
+		{"key": "peak_time", "label": "峰值时刻", "min": 0.0, "max": 1.0, "step": 0.01},
+		{"key": "end", "label": "结束大小", "min": 0.1, "max": 3.0, "step": 0.05},
+	]
+	for i in range(curve_params.size()):
+		var cp = curve_params[i]
+		var row_y = 960 + i * 45
+
+		var p_label = Label.new()
+		p_label.text = cp["label"]
+		p_label.position = Vector2(50, row_y + 5)
+		p_label.add_theme_font_size_override("font_size", 18)
+		p_label.custom_minimum_size = Vector2(150, 30)
+		play_content.add_child(p_label)
+
+		var p_slider = HSlider.new()
+		p_slider.position = Vector2(210, row_y)
+		p_slider.size = Vector2(300, 40)
+		p_slider.min_value = cp["min"]
+		p_slider.max_value = cp["max"]
+		p_slider.step = cp["step"]
+		p_slider.value = float(je_curve.get(cp["key"], cp["min"]))
+		play_content.add_child(p_slider)
+
+		var p_val = Label.new()
+		p_val.text = "%.2f" % p_slider.value
+		p_val.position = Vector2(530, row_y + 5)
+		p_val.add_theme_font_size_override("font_size", 18)
+		p_val.custom_minimum_size = Vector2(80, 30)
+		play_content.add_child(p_val)
+
+		p_slider.value_changed.connect(func(val: float, key = cp["key"], label = p_val):
+			je_curve[key] = val
+			label.text = "%.2f" % val
+			_refresh_curve.call()
+		)
+
+	# Hold 特效渐显时长（默认 50ms）
+	var fi_label = Label.new()
+	fi_label.text = "Hold 渐显时长"
+	fi_label.position = Vector2(50, 1145)
+	fi_label.add_theme_font_size_override("font_size", 18)
+	fi_label.custom_minimum_size = Vector2(150, 30)
+	play_content.add_child(fi_label)
+
+	var fi_slider = HSlider.new()
+	fi_slider.position = Vector2(210, 1140)
+	fi_slider.size = Vector2(300, 40)
+	fi_slider.min_value = 0.0
+	fi_slider.max_value = 500.0
+	fi_slider.step = 10.0
+	fi_slider.value = Global.get_judge_effect_fade_in_ms()
+	play_content.add_child(fi_slider)
+
+	var fi_val = Label.new()
+	fi_val.text = "%dms" % fi_slider.value
+	fi_val.position = Vector2(530, 1145)
+	fi_val.add_theme_font_size_override("font_size", 18)
+	fi_val.custom_minimum_size = Vector2(100, 30)
+	play_content.add_child(fi_val)
+
+	fi_slider.value_changed.connect(func(val: float, label = fi_val):
+		Global.set_judge_effect_fade_in_ms(int(val))
+		label.text = "%dms" % int(val)
+	)
+
+	# 模式切换
+	mode_option.item_selected.connect(func(idx: int):
+		Global.set_judge_effect_mode("frame" if idx == 0 else "original")
+	)
 
 	# === 延迟校准 Tab ===
 	var cal_tab = Control.new()
