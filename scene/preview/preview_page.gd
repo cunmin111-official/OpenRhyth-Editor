@@ -34,6 +34,25 @@ void fragment() {
 }
 """
 
+# 判定线着色器（全场景共享单个 Shader 资源，避免每线重复创建/编译）
+const LINE_SHADER_CODE: String = "shader_type spatial;\nrender_mode unshaded, depth_draw_never, cull_disabled;\nuniform vec4 line_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);\nvoid fragment() {\n\tALBEDO = line_color.rgb;\n\tALPHA = line_color.a;\n}"
+
+# 渲染距离剔除：
+# 雾效 alpha = exp(-dist / fog_dist)。dist > FOG_CULL_FACTOR * fog_dist 时 alpha < 0.0005，
+# 视觉上已完全不可见，直接隐藏并跳过 modulate/exp 计算。
+const FOG_CULL_FACTOR: float = 7.6
+# 判定线级剔除的余量：音符相对线心的最大偏移（positionX ±半线长 + 速度积分位移）
+const NOTE_OFFSET_MARGIN: float = 900.0
+
+# 视频预取：提前多少秒发起后台加载（配合 ResourceLoader.load_threaded_request，
+# 避免视频纹理首次出现那一帧在主线程同步读文件造成卡顿）
+const VIDEO_PRELOAD_AHEAD_S: float = 4.0
+# build_3d_scene 分帧：每帧最多创建的音符 sprite 数，降低大谱面进入场景的卡顿
+const BUILD_CHUNK_NOTES: int = 128
+
+# 判定线事件键（build 时统一遍历，事件数组引用缓存到 line_info["events_cache"]）
+const LINE_EVENT_KEYS: Array = ["alphaEvents", "moveXEvents", "moveYEvents", "moveZEvents", "rotateXEvents", "rotateYEvents", "rotateZEvents", "speedEvents", "notesAlphaEvents", "lengthEvents"]
+
 # 预加载纹理
 var preloaded_textures: Dictionary = {}
 var note_textures = {
@@ -78,6 +97,11 @@ var judge_line_nodes: Array = []
 var real_notes_data: Array = []
 var total_real_count: int = 0
 
+# 视频流后台加载缓存：full_path -> VideoStream（null 表示加载失败/不可用）
+var _video_streams: Dictionary = {}
+# 已发起后台加载的路径：full_path -> true
+var _video_load_requested: Dictionary = {}
+
 var combo_label: Label
 var combo_text_label: Label
 var score_label: Label
@@ -98,11 +122,13 @@ func _ready() -> void:
 	load_chart_data()
 	load_audio()
 	preload_textures()
-	build_3d_scene()
+	# UI 标签在分帧构建前创建：构建期间 _process 已开始跑，需保证标签非空
+	build_ui_labels()
+	# 分帧构建 3D 场景（大谱面避免一次性创建全部节点卡住首帧）
+	await build_3d_scene()
 	_load_judge_frame_textures()
 	_init_effect_pool()
 	real_notes_data.sort()
-	build_ui_labels()
 	bind_video_textures.call_deferred()
 
 func build_ui_labels() -> void:
@@ -247,161 +273,179 @@ func load_audio_from_path(path: String) -> AudioStream:
 
 func build_3d_scene() -> void:
 	for line_data in chart_data.get("judgeLineList", []):
-		var line_group = Node3D.new()
-		line_group.name = line_data.get("Name", "JudgeLine")
-		world_3d.add_child(line_group)
-
-		var line_mesh = MeshInstance3D.new()
-		line_mesh.name = "LineMesh"
-		var cylinder = CylinderMesh.new()
-		cylinder.top_radius = 0.15
-		cylinder.bottom_radius = 0.15
-		cylinder.height = line_data.get("length", 200.0)
-		line_mesh.mesh = cylinder
-		line_mesh.rotation_degrees.z = -90.0
-		var line_shader = Shader.new()
-		line_shader.code = "shader_type spatial;\nrender_mode unshaded, depth_draw_never, cull_disabled;\nuniform vec4 line_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);\nvoid fragment() {\n\tALBEDO = line_color.rgb;\n\tALPHA = line_color.a;\n}"
-		var mat = ShaderMaterial.new()
-		mat.shader = line_shader
-		mat.set_shader_parameter("line_color", Color(0, 0, 0, 1.0))
-		line_mesh.material_override = mat
-		line_group.add_child(line_mesh)
-
-		var name_label = Label3D.new()
-		name_label.name = "NameLabel"
-		name_label.text = line_data.get("Name", "JudgeLine")
-		name_label.modulate = Color(0.6, 0.85, 1.0)
-		name_label.pixel_size = 0.1
-		name_label.font_size = 32
-		name_label.outline_size = 0
-		name_label.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-		if Global.mono_font:
-			name_label.font = Global.mono_font
-		name_label.position = Vector3(0, 0, 0)
-		line_group.add_child(name_label)
-
-		var texture_sprite = Sprite3D.new()
-		texture_sprite.name = "TextureSprite"
-		texture_sprite.visible = false
-		texture_sprite.transparent = true
-		texture_sprite.billboard = BaseMaterial3D.BILLBOARD_DISABLED
-		texture_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		line_group.add_child(texture_sprite)
-
-		# 视频节点懒初始化：仅当遇到视频纹理时按需创建
-
-		var note_group = Node3D.new()
-		note_group.name = "NoteGroup"
-		line_group.add_child(note_group)
-
-		var line_info = {
-			"node": line_group,
-			"mesh": line_mesh,
-			"texture_sprite": texture_sprite,
-			"video_viewport": null,
-			"video_player_2d": null,
-			"video_mesh": null,
-			"video_initialized": false,
-			"name_label": name_label,
-			"note_group": note_group,
-			"data": line_data,
-			"note_sprites": [],
-			"hold_bodies": [],
-		}
-
-		var notes = line_data.get("notes", [])
-		# 确保音符按开始节拍升序（editor 可能未排序）
-		notes.sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
-		var line_max_visible: float = 0.0
-		for note_data in notes:
-			var note_type = int(note_data.get("type", 1))
-			var is_fake = float(note_data.get("isFake", 0.0))
-			# 预计算音符节拍/时间（静态，避免每帧重复 fraction_to_beat + 二分查找）
-			var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
-			var end_beat = fraction_to_beat(note_data.get("endTime", [0, 0, 1]))
-			note_data["_start_beat"] = start_beat
-			note_data["_start_time"] = beat_to_time(start_beat)
-			note_data["_end_beat"] = end_beat
-			note_data["_end_time"] = beat_to_time(end_beat)
-			note_data["_effect_triggered"] = false
-			# 记录本线最大 visibleTime（毫秒→秒），决定二分查找的遍历上界
-			var note_visible_s = float(note_data.get("visibleTime", 5000.0)) / 1000.0
-			if note_visible_s > line_max_visible:
-				line_max_visible = note_visible_s
-			if is_fake == 0.0:
-				var pass_time = note_data["_end_time"] if note_type == 0 else note_data["_start_time"]
-				real_notes_data.append(pass_time)
-				total_real_count += 1
-
-			if note_type == 0:
-				var hold_body = Sprite3D.new()
-				hold_body.name = "HoldBody"
-				hold_body.texture = note_textures["hold_body"]
-				hold_body.transparent = true
-				hold_body.pixel_size = Global.get_effective_note_type_size("hold_body")
-				hold_body.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
-				hold_body.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-				# 无着色器，裁剪在 update_hold_note 中通过 scale/position 实现
-				note_group.add_child(hold_body)
-
-				var hold_head = Sprite3D.new()
-				hold_head.name = "HoldHead"
-				hold_head.texture = note_textures["hold_head"]
-				hold_head.transparent = true
-				hold_head.pixel_size = Global.get_effective_note_type_size("hold_head")
-				hold_head.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
-				hold_head.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-				note_group.add_child(hold_head)
-
-				line_info["hold_bodies"].append({
-					"body": hold_body,
-					"head": hold_head,
-					"data": note_data
-				})
-			else:
-				var sprite = Sprite3D.new()
-				sprite.name = "NoteSprite"
-				if note_type == 1:
-					sprite.texture = note_textures["tap"]
-				elif note_type == 2:
-					sprite.texture = note_textures["drag"]
-				sprite.transparent = true
-				if note_type == 1:
-					sprite.pixel_size = Global.get_effective_note_type_size("tap")
-				elif note_type == 2:
-					sprite.pixel_size = Global.get_effective_note_type_size("drag")
-				else:
-					sprite.pixel_size = Global.get_note_size() * Global.PIXEL_SIZE_SCALE
-				sprite.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
-				sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-				note_group.add_child(sprite)
-
-				line_info["note_sprites"].append({
-					"sprite": sprite,
-					"data": note_data
-				})
-
-		# 记录本线最大 visibleTime（秒），二分查找遍历时作为上界
-		line_info["max_visible_s"] = line_max_visible
-
-		judge_line_nodes.append(line_info)
-
-	var line_event_keys = ["alphaEvents", "moveXEvents", "moveYEvents", "moveZEvents", "rotateXEvents", "rotateYEvents", "rotateZEvents", "speedEvents", "notesAlphaEvents", "lengthEvents"]
-	for line_info in judge_line_nodes:
-		var layers = line_info["data"].get("eventLayers", [])
-		if not layers.is_empty():
-			var layer = layers[0]
-			if typeof(layer) == TYPE_DICTIONARY:
-				for key in line_event_keys:
-					if layer.has(key) and typeof(layer[key]) == TYPE_ARRAY:
-						if layer[key].size() > 1:
-							layer[key].sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
-						# 预计算事件时间（静态，避免每帧重复换算）
-						_annotate_event_times(layer[key])
-		# 预计算速度积分缓存（速度事件静态，整局只需构建一次，避免每帧每线重建）
-		line_info["speed_cache"] = _build_speed_cache(get_layer_events(line_info["data"], "speedEvents"))
-
+		await _build_one_line(line_data)
 	print("[预览] 3D场景构建完成")
+
+# 完整构建一条判定线（节点 + 音符 + 事件缓存），音符超过 BUILD_CHUNK_NOTES 时让出一帧
+func _build_one_line(line_data: Dictionary) -> void:
+	var line_group = Node3D.new()
+	line_group.name = line_data.get("Name", "JudgeLine")
+	world_3d.add_child(line_group)
+
+	var line_mesh = MeshInstance3D.new()
+	line_mesh.name = "LineMesh"
+	var cylinder = CylinderMesh.new()
+	cylinder.top_radius = 0.15
+	cylinder.bottom_radius = 0.15
+	cylinder.height = line_data.get("length", 200.0)
+	line_mesh.mesh = cylinder
+	line_mesh.rotation_degrees.z = -90.0
+	var mat = ShaderMaterial.new()
+	mat.shader = _get_line_shader()
+	mat.set_shader_parameter("line_color", Color(0, 0, 0, 1.0))
+	line_mesh.material_override = mat
+	line_group.add_child(line_mesh)
+
+	var name_label = Label3D.new()
+	name_label.name = "NameLabel"
+	name_label.text = line_data.get("Name", "JudgeLine")
+	name_label.modulate = Color(0.6, 0.85, 1.0)
+	name_label.pixel_size = 0.1
+	name_label.font_size = 32
+	name_label.outline_size = 0
+	name_label.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	if Global.mono_font:
+		name_label.font = Global.mono_font
+	name_label.position = Vector3(0, 0, 0)
+	line_group.add_child(name_label)
+
+	var texture_sprite = Sprite3D.new()
+	texture_sprite.name = "TextureSprite"
+	texture_sprite.visible = false
+	texture_sprite.transparent = true
+	texture_sprite.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	texture_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	line_group.add_child(texture_sprite)
+
+	# 视频节点懒初始化：仅当遇到视频纹理时按需创建
+
+	var note_group = Node3D.new()
+	note_group.name = "NoteGroup"
+	line_group.add_child(note_group)
+
+	var line_info = {
+		"node": line_group,
+		"mesh": line_mesh,
+		"texture_sprite": texture_sprite,
+		"video_viewport": null,
+		"video_player_2d": null,
+		"video_mesh": null,
+		"video_initialized": false,
+		"name_label": name_label,
+		"note_group": note_group,
+		"data": line_data,
+		"note_sprites": [],
+		"hold_bodies": [],
+		# 上一帧可见的 sprite 列表：帧首只隐藏这些，避免每帧 O(总音符数) 全量遍历
+		"_prev_visible": [],
+	}
+
+	var notes = line_data.get("notes", [])
+	# 确保音符按开始节拍升序（editor 可能未排序）
+	notes.sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
+	var line_max_visible: float = 0.0
+	var built_in_frame: int = 0
+	for note_data in notes:
+		var note_type = int(note_data.get("type", 1))
+		var is_fake = float(note_data.get("isFake", 0.0))
+		# 预计算音符节拍/时间（静态，避免每帧重复 fraction_to_beat + 二分查找）
+		var start_beat = fraction_to_beat(note_data.get("startTime", [0, 0, 1]))
+		var end_beat = fraction_to_beat(note_data.get("endTime", [0, 0, 1]))
+		note_data["_start_beat"] = start_beat
+		note_data["_start_time"] = beat_to_time(start_beat)
+		note_data["_end_beat"] = end_beat
+		note_data["_end_time"] = beat_to_time(end_beat)
+		note_data["_effect_triggered"] = false
+		# 记录本线最大 visibleTime（毫秒→秒），决定二分查找的遍历上界
+		var note_visible_s = float(note_data.get("visibleTime", 5000.0)) / 1000.0
+		if note_visible_s > line_max_visible:
+			line_max_visible = note_visible_s
+		if is_fake == 0.0:
+			var pass_time = note_data["_end_time"] if note_type == 0 else note_data["_start_time"]
+			real_notes_data.append(pass_time)
+			total_real_count += 1
+
+		if note_type == 0:
+			var hold_body = Sprite3D.new()
+			hold_body.name = "HoldBody"
+			hold_body.texture = note_textures["hold_body"]
+			hold_body.visible = false
+			hold_body.transparent = true
+			hold_body.pixel_size = Global.get_effective_note_type_size("hold_body")
+			hold_body.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
+			hold_body.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			# 无着色器，裁剪在 update_hold_note 中通过 scale/position 实现
+			note_group.add_child(hold_body)
+
+			var hold_head = Sprite3D.new()
+			hold_head.name = "HoldHead"
+			hold_head.texture = note_textures["hold_head"]
+			hold_head.visible = false
+			hold_head.transparent = true
+			hold_head.pixel_size = Global.get_effective_note_type_size("hold_head")
+			hold_head.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
+			hold_head.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			note_group.add_child(hold_head)
+
+			line_info["hold_bodies"].append({
+				"body": hold_body,
+				"head": hold_head,
+				"data": note_data
+			})
+		else:
+			var sprite = Sprite3D.new()
+			sprite.name = "NoteSprite"
+			if note_type == 1:
+				sprite.texture = note_textures["tap"]
+			elif note_type == 2:
+				sprite.texture = note_textures["drag"]
+			sprite.visible = false
+			sprite.transparent = true
+			if note_type == 1:
+				sprite.pixel_size = Global.get_effective_note_type_size("tap")
+			elif note_type == 2:
+				sprite.pixel_size = Global.get_effective_note_type_size("drag")
+			else:
+				sprite.pixel_size = Global.get_note_size() * Global.PIXEL_SIZE_SCALE
+			sprite.set_draw_flag(Sprite3D.FLAG_DOUBLE_SIDED, true)
+			sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+			note_group.add_child(sprite)
+
+			line_info["note_sprites"].append({
+				"sprite": sprite,
+				"data": note_data
+			})
+
+		# 分帧：本帧创建的音符达到上限就让出一帧，避免大谱面卡住
+		built_in_frame += 1
+		if built_in_frame >= BUILD_CHUNK_NOTES:
+			built_in_frame = 0
+			await get_tree().process_frame
+
+	# 记录本线最大 visibleTime（秒），二分查找遍历时作为上界
+	line_info["max_visible_s"] = line_max_visible
+	_annotate_line_events(line_info)
+	judge_line_nodes.append(line_info)
+
+# 单线事件处理：排序 + 标注时间 + 缓存事件数组引用 + 预构建速度积分缓存
+func _annotate_line_events(line_info: Dictionary) -> void:
+	var line_data: Dictionary = line_info["data"]
+	var layers = line_data.get("eventLayers", [])
+	if not layers.is_empty():
+		var layer = layers[0]
+		if typeof(layer) == TYPE_DICTIONARY:
+			for key in LINE_EVENT_KEYS:
+				if layer.has(key) and typeof(layer[key]) == TYPE_ARRAY:
+					if layer[key].size() > 1:
+						layer[key].sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
+					# 预计算事件时间（静态，避免每帧重复换算）
+					_annotate_event_times(layer[key])
+	# 缓存每线事件数组引用，避免 update_judge_lines 每帧做 10 次字典查找
+	line_info["events_cache"] = {}
+	for key in LINE_EVENT_KEYS:
+		line_info["events_cache"][key] = get_layer_events(line_data, key)
+	# 预计算速度积分缓存（速度事件静态，整局只需构建一次，避免每帧每线重建）
+	line_info["speed_cache"] = _build_speed_cache(line_info["events_cache"].get("speedEvents", []))
 
 func fraction_to_beat(fraction: Array) -> float:
 	if fraction.size() != 3:
@@ -419,7 +463,9 @@ func beat_to_time(beat: float) -> float:
 func time_to_beat(time_sec: float) -> float:
 	return Global.cached_time_to_beat(bpm_cache, time_sec)
 
-func eval_expression(expr_str: String, x_val: float) -> float:
+# 将 y= 表达式字符串清洗为可直接 parse 的形式：x 保留为变量名（作为 execute 入参），
+# 运行期只需 execute([x])，避免每帧每音符重新拼字符串 + parse
+static func _build_expr_clean(expr_str: String) -> String:
 	var s = expr_str.strip_edges()
 	if s.begins_with("y="):
 		s = s.substr(2)
@@ -438,15 +484,18 @@ func eval_expression(expr_str: String, x_val: float) -> float:
 		if not matched:
 			var c = s[i]
 			if c == "x":
-				clean += "(" + str(x_val) + ")"
+				clean += "x"
 			elif c in "0123456789+-*/().eE " or c == "*":
 				clean += c
 			i += 1
-	var expression = Expression.new()
-	var err = expression.parse(clean, [])
-	if err != OK:
+	return clean
+
+# 求值缓存表达式：build 时已预解析（_expr），运行期只执行不重新 parse
+func _eval_cached_expression(ev: Dictionary, x_val: float) -> float:
+	var expression = ev.get("_expr")
+	if not (expression is Expression):
 		return 0.0
-	var result = expression.execute([], null, false)
+	var result = expression.execute([x_val], null, false)
 	if expression.has_execute_failed() or result == null:
 		return 0.0
 	return float(result)
@@ -459,6 +508,12 @@ func _annotate_event_times(events: Array) -> void:
 			continue
 		ev["_st"] = beat_to_time(fraction_to_beat(ev.get("startTime", [0, 0, 1])))
 		ev["_et"] = beat_to_time(fraction_to_beat(ev.get("endTime", [0, 0, 1])))
+		var ev_type = str(ev.get("type", "Linear"))
+		if ev_type.begins_with("y="):
+			# 预解析 y= 表达式（x 为输入变量），避免每帧每音符重新 parse
+			var expression = Expression.new()
+			if expression.parse(_build_expr_clean(ev_type), ["x"]) == OK:
+				ev["_expr"] = expression
 
 func get_event_value_at_time(events: Array, time_sec: float, default_value: float) -> float:
 	if events.is_empty():
@@ -489,7 +544,7 @@ func get_event_value_at_time(events: Array, time_sec: float, default_value: floa
 				last_value = start_val + (end_val - start_val) * t
 			elif ev_type.begins_with("y="):
 				var x = time_sec - start_time
-				last_value = eval_expression(ev_type, x)
+				last_value = _eval_cached_expression(ev, x)
 			else:
 				var t = (time_sec - start_time) / (end_time - start_time)
 				last_value = start_val + (end_val - start_val) * t
@@ -586,19 +641,21 @@ func update_judge_lines(time_sec: float) -> void:
 		var line_data = line_info["data"]
 		var line_node: Node3D = line_info["node"]
 		var line_mesh: MeshInstance3D = line_info["mesh"]
+		# 事件数组引用在 build 时已缓存，避免每帧 10 次字典查找
+		var ev_cache: Dictionary = line_info["events_cache"]
 
-		var move_x = get_event_value_at_time(get_layer_events(line_data, "moveXEvents"), time_sec, 0.0)
-		var move_y = get_event_value_at_time(get_layer_events(line_data, "moveYEvents"), time_sec, 0.0)
-		var move_z = get_event_value_at_time(get_layer_events(line_data, "moveZEvents"), time_sec, 0.0)
-		var rot_x = get_event_value_at_time(get_layer_events(line_data, "rotateXEvents"), time_sec, 0.0)
-		var rot_y = get_event_value_at_time(get_layer_events(line_data, "rotateYEvents"), time_sec, 0.0)
-		var rot_z = get_event_value_at_time(get_layer_events(line_data, "rotateZEvents"), time_sec, 0.0)
-		var alpha = get_event_value_at_time(get_layer_events(line_data, "alphaEvents"), time_sec, 0.0)
-		var speed_events = get_layer_events(line_data, "speedEvents")
+		var move_x = get_event_value_at_time(ev_cache.get("moveXEvents", []), time_sec, 0.0)
+		var move_y = get_event_value_at_time(ev_cache.get("moveYEvents", []), time_sec, 0.0)
+		var move_z = get_event_value_at_time(ev_cache.get("moveZEvents", []), time_sec, 0.0)
+		var rot_x = get_event_value_at_time(ev_cache.get("rotateXEvents", []), time_sec, 0.0)
+		var rot_y = get_event_value_at_time(ev_cache.get("rotateYEvents", []), time_sec, 0.0)
+		var rot_z = get_event_value_at_time(ev_cache.get("rotateZEvents", []), time_sec, 0.0)
+		var alpha = get_event_value_at_time(ev_cache.get("alphaEvents", []), time_sec, 0.0)
+		var speed_events = ev_cache.get("speedEvents", [])
 		# 速度积分缓存在 build_3d_scene 中已构建一次，此处直接复用
 		var speed_cache = line_info["speed_cache"]
-		var notes_alpha = get_event_value_at_time(get_layer_events(line_data, "notesAlphaEvents"), time_sec, 255.0)
-		var line_length = get_event_value_at_time(get_layer_events(line_data, "lengthEvents"), time_sec, 200.0)
+		var notes_alpha = get_event_value_at_time(ev_cache.get("notesAlphaEvents", []), time_sec, 255.0)
+		var line_length = get_event_value_at_time(ev_cache.get("lengthEvents", []), time_sec, 200.0)
 
 		line_node.position = Vector3(move_x, move_y, move_z)
 		line_node.rotation_degrees = Vector3(rot_x, rot_y, rot_z)
@@ -609,7 +666,7 @@ func update_judge_lines(time_sec: float) -> void:
 
 		var line_alpha_normalized = alpha / 255.0
 		var line_fog_dist = max(current_fog * 10.0, 1.0)
-		var line_cam_dist = line_node.global_position.distance_to(camera.global_position)
+		var line_cam_dist = line_node.global_position.distance_to(cam_pos)
 		var line_fog_alpha = exp(-line_cam_dist / line_fog_dist)
 		var line_alpha_with_fog = clamp(line_alpha_normalized * line_fog_alpha, 0.0, 1.0)
 		if line_mesh.material_override:
@@ -623,7 +680,9 @@ func update_judge_lines(time_sec: float) -> void:
 		if not has_image:
 			if name_label:
 				name_label.modulate = Color(0.6, 0.85, 1.0, 0.5 + 0.5 * line_alpha_with_fog)
-		update_notes(line_info, time_sec, speed_events, speed_cache, notes_alpha, cam_pos)
+		# 判定线整体处于雾效剔除距离外（含音符最大偏移余量）：音符只触发特效，跳过渲染
+		var render_culled = line_cam_dist > line_fog_dist * FOG_CULL_FACTOR + NOTE_OFFSET_MARGIN
+		update_notes(line_info, time_sec, speed_events, speed_cache, notes_alpha, cam_pos, render_culled)
 
 func _ensure_video_nodes(line_info: Dictionary, line_group: Node3D) -> void:
 	if line_info.get("video_initialized", false):
@@ -661,6 +720,51 @@ func _ensure_video_nodes(line_info: Dictionary, line_group: Node3D) -> void:
 	line_group.add_child(video_mesh)
 	line_info["video_mesh"] = video_mesh
 
+# 对即将进入时间窗（VIDEO_PRELOAD_AHEAD_S 内）或当前正在播放的视频纹理发起后台加载
+func _preload_upcoming_videos(textures: Array, time_sec: float) -> void:
+	for tex in textures:
+		if not tex.has("_st") or not tex.has("_et"):
+			continue
+		# 只预取尚未结束的视频：未来 VIDEO_PRELOAD_AHEAD_S 秒内将进入，或正处于时间窗内
+		if tex["_st"] - time_sec > VIDEO_PRELOAD_AHEAD_S:
+			continue
+		if tex["_et"] < time_sec:
+			continue
+		var display_path = tex.get("display", "")
+		if display_path == "":
+			continue
+		var path_info = preloaded_paths.get(display_path)
+		if path_info == null or not path_info["is_video"]:
+			continue
+		var full_path = path_info["full_path"]
+		if _video_load_requested.has(full_path) or _video_streams.has(full_path):
+			continue
+		if not FileAccess.file_exists(full_path):
+			continue
+		ResourceLoader.load_threaded_request(full_path, "VideoStream")
+		_video_load_requested[full_path] = true
+
+# 取视频流：优先用后台加载结果；加载中返回 null（调用方隐藏本帧，下帧重试）
+func _get_video_stream(full_path: String):
+	if _video_streams.has(full_path):
+		return _video_streams[full_path]
+	var status = ResourceLoader.load_threaded_get_status(full_path)
+	if status == ResourceLoader.THREAD_LOAD_LOADED:
+		var stream = ResourceLoader.load_threaded_get(full_path)
+		_video_streams[full_path] = stream if stream is VideoStream else null
+		return _video_streams[full_path]
+	elif status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+		# 未发起过（如 seek 直接跳进视频段）：后台发起，本帧隐藏，下帧取结果
+		ResourceLoader.load_threaded_request(full_path, "VideoStream")
+		_video_load_requested[full_path] = true
+		return null
+	elif status == ResourceLoader.THREAD_LOAD_FAILED:
+		# 后台加载失败：回退同步加载一次并缓存结果（含失败缓存，避免反复重试）
+		var stream = ResourceLoader.load(full_path)
+		_video_streams[full_path] = stream if stream is VideoStream else null
+		return _video_streams[full_path]
+	return null
+
 func update_textures(line_info: Dictionary, time_sec: float, line_alpha: float, length_pct: float = 100.0) -> bool:
 	var texture_sprite: Sprite3D = line_info["texture_sprite"]
 	var video_viewport = line_info.get("video_viewport")
@@ -669,13 +773,18 @@ func update_textures(line_info: Dictionary, time_sec: float, line_alpha: float, 
 	var line_data: Dictionary = line_info["data"]
 	var textures = line_data.get("textures", [])
 
+	# 预取：对即将进入时间窗的视频纹理提前发起后台加载，避免播放帧同步读文件
+	_preload_upcoming_videos(textures, time_sec)
+
 	var active_texture: Dictionary = {}
 	var active_start_time: float = 0.0
 	for tex in textures:
-		var start_beat = fraction_to_beat(tex.get("startTime", [0, 0, 1]))
-		var end_beat = fraction_to_beat(tex.get("endTime", [999999, 0, 1]))
-		var start_time = beat_to_time(start_beat)
-		var end_time = beat_to_time(end_beat)
+		# 起止时间在 preload_textures 中已预计算，懒回退兜底（重复进入时也只在首次换算）
+		if not tex.has("_st"):
+			tex["_st"] = beat_to_time(fraction_to_beat(tex.get("startTime", [0, 0, 1])))
+			tex["_et"] = beat_to_time(fraction_to_beat(tex.get("endTime", [999999, 0, 1])))
+		var start_time = tex["_st"]
+		var end_time = tex["_et"]
 		if time_sec >= start_time and time_sec <= end_time:
 			active_texture = tex
 			active_start_time = start_time
@@ -708,10 +817,9 @@ func update_textures(line_info: Dictionary, time_sec: float, line_alpha: float, 
 			stop_video_mesh(video_player_2d, video_mesh)
 			return false
 		if video_player_2d.stream == null:
-			var stream = ResourceLoader.load(full_path, "VideoStream")
+			# 后台预加载缓存：已就绪直接用；未就绪则隐藏本帧，下帧重试（不阻塞主线程）
+			var stream = _get_video_stream(full_path)
 			if stream == null:
-				stream = ResourceLoader.load(full_path)
-			if stream == null or not (stream is VideoStream):
 				stop_video_mesh(video_player_2d, video_mesh)
 				return false
 			video_player_2d.stream = stream
@@ -753,6 +861,10 @@ func preload_textures() -> void:
 	for line_data in chart_data.get("judgeLineList", []):
 		var textures = line_data.get("textures", [])
 		for tex in textures:
+			# 预计算纹理起止时间（静态），update_textures 每帧不再 fraction_to_beat + beat_to_time
+			if not tex.has("_st"):
+				tex["_st"] = beat_to_time(fraction_to_beat(tex.get("startTime", [0, 0, 1])))
+				tex["_et"] = beat_to_time(fraction_to_beat(tex.get("endTime", [999999, 0, 1])))
 			var display_path = tex["display"]
 			if preloaded_paths.has(display_path):
 				continue
@@ -802,16 +914,17 @@ func stop_video_mesh(video_player_2d, video_mesh) -> void:
 	if video_mesh and video_mesh.visible:
 		video_mesh.visible = false
 
-func update_notes(line_info: Dictionary, time_sec: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3) -> void:
-	# 每帧先清空所有音符，后续只对可见范围内的设为可见（避免 skip 的音符残留上一帧状态）
-	for note_info in line_info["note_sprites"]:
-		note_info["sprite"].visible = false
-	for hold_info in line_info["hold_bodies"]:
-		hold_info["body"].visible = false
-		hold_info["head"].visible = false
+func update_notes(line_info: Dictionary, time_sec: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3, render_culled: bool) -> void:
+	# 增量隐藏：只清上一帧可见的 sprite，避免每帧 O(总音符数) 全量遍历
+	var prev_visible: Array = line_info["_prev_visible"]
+	for sp in prev_visible:
+		sp.visible = false
+	prev_visible.clear()
 
 	var current_beat = time_to_beat(time_sec)
 	var max_visible_s = line_info.get("max_visible_s", 5.0)
+	# time_sec 的速度积分对本线所有音符相同，每线每帧只算一次
+	var cum_now = _speed_cumulative(speed_cache, speed_events, time_sec)
 
 	var note_sprites: Array = line_info["note_sprites"]
 	var start_idx = _bisect_left_note_list(note_sprites, current_beat - 5.0)
@@ -821,9 +934,10 @@ func update_notes(line_info: Dictionary, time_sec: float, speed_events: Array, s
 		if note_data["_start_time"] - time_sec > max_visible_s:
 			break
 		var sprite: Sprite3D = note_info["sprite"]
-		update_single_note(sprite, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos, line_info["node"])
+		update_single_note(sprite, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos, line_info["node"], cum_now, render_culled)
 		if sprite.visible:
 			visible_note_count += 1
+			prev_visible.append(sprite)
 
 	var hold_bodies: Array = line_info["hold_bodies"]
 	# Hold 的可见性由 endTime 决定（start 可能很早但 end 还在未来），不从二分查找 skip
@@ -835,9 +949,12 @@ func update_notes(line_info: Dictionary, time_sec: float, speed_events: Array, s
 			break
 		var body: Sprite3D = hold_info["body"]
 		var head: Sprite3D = hold_info["head"]
-		update_hold_note(body, head, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos, line_info["node"])
+		update_hold_note(body, head, note_data, time_sec, current_beat, speed_events, speed_cache, notes_alpha, cam_pos, line_info["node"], cum_now, render_culled)
 		if body.visible:
 			visible_note_count += 1
+			prev_visible.append(body)
+		if head.visible:
+			prev_visible.append(head)
 
 # 二分查找：在 note_sprite / hold_body 的 data._start_beat 数组中找第一个 >= beat 的索引
 static func _bisect_left_note_list(list: Array, beat: float) -> int:
@@ -918,17 +1035,31 @@ func _init_effect_pool() -> void:
 	for i in range(EFFECT_POOL_SIZE):
 		_effect_pool.append(_new_effect_sprite())
 
+# 判定线 Shader 单例：多条线/多次构建共享，避免每线重新创建与编译
+var _line_shader: Shader = null
+func _get_line_shader() -> Shader:
+	if _line_shader == null:
+		_line_shader = Shader.new()
+		_line_shader.code = LINE_SHADER_CODE
+	return _line_shader
+
+# 特效 Shader 单例：特效池 32 个 sprite 共享同一 Shader 资源
+var _effect_shader: Shader = null
+func _get_effect_shader() -> Shader:
+	if _effect_shader == null:
+		_effect_shader = Shader.new()
+		_effect_shader.code = JUDGE_EFFECT_SHADER_CODE
+	return _effect_shader
+
 func _new_effect_sprite() -> Sprite3D:
 	var sprite = Sprite3D.new()
 	sprite.transparent = true
 	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
 	sprite.pixel_size = 0.05
 	sprite.visible = false
-	# 逐帧动画用灰度×颜色着色器
+	# 逐帧动画用灰度×颜色着色器（Shader 全局共享，仅材质按 sprite 独立）
 	var mat = ShaderMaterial.new()
-	var shader = Shader.new()
-	shader.code = JUDGE_EFFECT_SHADER_CODE
-	mat.shader = shader
+	mat.shader = _get_effect_shader()
 	mat.set_shader_parameter("grade_color", Color.WHITE)
 	if not judge_frame_textures.is_empty():
 		mat.set_shader_parameter("texture_sprite", judge_frame_textures[0])
@@ -1065,7 +1196,7 @@ func _trigger_note_effect(note_data: Dictionary, line_node: Node3D, for_hold: bo
 		spawn_judge_effect(effect_pos)
 	note_data["_effect_triggered"] = true
 
-func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3, line_node: Node3D) -> void:
+func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3, line_node: Node3D, cum_now: float, render_culled: bool) -> void:
 	var note_beat = note_data["_start_beat"]
 	var note_time = note_data["_start_time"]
 	# visibleTime 单位为毫秒，转为秒
@@ -1083,12 +1214,18 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 		sprite.visible = false
 		return
 
+	# 判定线整体处于雾效剔除距离外：只触发特效，跳过全部渲染计算
+	if render_culled:
+		sprite.visible = false
+		return
+
 	# 可见范围内才计算位置/透明度
 	sprite.visible = true
 	var pos_x = float(note_data.get("positionX", 0.0))
 	var note_speed = float(note_data.get("speed", 10.0))
 
-	var y_offset = note_speed * (_speed_cumulative(speed_cache, speed_events, note_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
+	# cum_now 由 update_notes 每线每帧算一次，此处只对 note_time 做一次积分
+	var y_offset = note_speed * (_speed_cumulative(speed_cache, speed_events, note_time) - cum_now)
 	sprite.position = Vector3(pos_x, y_offset, 0.0)
 
 	var note_alpha = float(note_data.get("alpha", 1.0))
@@ -1096,11 +1233,15 @@ func update_single_note(sprite: Sprite3D, note_data: Dictionary, time_sec: float
 	var base_alpha = combined_alpha / 255.0
 	var fog_distance = max(current_fog * 10.0, 1.0)
 	var cam_dist = sprite.global_position.distance_to(cam_pos)
+	# 渲染距离剔除：雾效已衰减到不可见，直接隐藏并跳过 exp/modulate
+	if cam_dist > fog_distance * FOG_CULL_FACTOR:
+		sprite.visible = false
+		return
 	var fog_alpha = exp(-cam_dist / fog_distance)
 	base_alpha *= fog_alpha
 	sprite.modulate = Color(1, 1, 1, clamp(base_alpha, 0.0, 1.0))
 
-func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3, line_node: Node3D) -> void:
+func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, time_sec: float, current_beat: float, speed_events: Array, speed_cache: Array, notes_alpha: float, cam_pos: Vector3, line_node: Node3D, cum_now: float, render_culled: bool) -> void:
 	var start_beat = note_data["_start_beat"]
 	var start_time = note_data["_start_time"]
 	var end_time = note_data["_end_time"]
@@ -1130,12 +1271,19 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 			note_data["_effect_sprite"] = null
 		return
 
+	# 判定线整体处于雾效剔除距离外：只触发特效/处理生命周期，跳过全部渲染计算
+	if render_culled:
+		body.visible = false
+		head.visible = false
+		return
+
 	# 可见范围内才计算位置/透明度
 	var note_speed = float(note_data.get("speed", 10.0))
 	var note_alpha = float(note_data.get("alpha", 1.0))
 
-	var y_start = note_speed * (_speed_cumulative(speed_cache, speed_events, start_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
-	var y_end = note_speed * (_speed_cumulative(speed_cache, speed_events, end_time) - _speed_cumulative(speed_cache, speed_events, time_sec))
+	# cum_now 由 update_notes 每线每帧算一次，此处只对 start/end 各做一次积分
+	var y_start = note_speed * (_speed_cumulative(speed_cache, speed_events, start_time) - cum_now)
+	var y_end = note_speed * (_speed_cumulative(speed_cache, speed_events, end_time) - cum_now)
 
 	# Hold 体：region_rect 只显示未判定部分的纹理，保持全长度比例不压缩
 	var full_len = y_end - y_start
@@ -1169,6 +1317,11 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 	var base_alpha = combined_alpha / 255.0
 	var fog_distance = max(current_fog * 10.0, 1.0)
 	var cam_dist = body.global_position.distance_to(cam_pos)
+	# 渲染距离剔除：雾效已衰减到不可见，直接隐藏并跳过 exp/modulate
+	if cam_dist > fog_distance * FOG_CULL_FACTOR:
+		body.visible = false
+		head.visible = false
+		return
 	var fog_alpha = exp(-cam_dist / fog_distance)
 	base_alpha *= fog_alpha
 	var final_alpha = clamp(base_alpha, 0.0, 1.0)
@@ -1248,14 +1401,16 @@ func seek_to(time_sec: float) -> void:
 
 func _reset_all_sprites() -> void:
 	for line_info in judge_line_nodes:
+		# 增量隐藏方案下：全部置为不可见并清空上一帧可见列表，下一帧 update_notes 重新计算
+		var prev_visible: Array = line_info["_prev_visible"]
 		for note_info in line_info.get("note_sprites", []):
 			var sprite: Sprite3D = note_info["sprite"]
-			sprite.visible = true
+			sprite.visible = false
 			note_info["data"]["judged"] = false
 			note_info["data"]["_effect_triggered"] = false
 		for hold_info in line_info.get("hold_bodies", []):
-			hold_info["body"].visible = true
-			hold_info["head"].visible = true
+			hold_info["body"].visible = false
+			hold_info["head"].visible = false
 			hold_info["data"]["judged"] = false
 			hold_info["data"]["hold_finalized"] = false
 			hold_info["data"]["_effect_triggered"] = false
@@ -1264,6 +1419,7 @@ func _reset_all_sprites() -> void:
 			if old_effect and is_instance_valid(old_effect):
 				_release_effect_sprite(old_effect)
 			hold_info["data"]["_effect_sprite"] = null
+		prev_visible.clear()
 
 func _on_return_button_pressed() -> void:
 	if audio_player.playing:
