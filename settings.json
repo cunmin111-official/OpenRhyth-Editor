@@ -1,7 +1,7 @@
 {
 	"auto_save": {
 		"enabled": true,
-		"interval_minutes": 5
+		"interval_minutes": 5.0
 	},
 	"calibration": {
 		"audio_offset_ms": 0.0,
@@ -19,7 +19,7 @@
 			"peak_time": 0.03,
 			"start": 0.75
 		},
-		"judge_effect_fade_in_ms": 50,
+		"judge_effect_fade_in_ms": 50.0,
 		"judge_effect_mode": "frame",
 		"note_size": 0.5,
 		"note_type_sizes": {
