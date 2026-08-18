@@ -474,6 +474,38 @@ static func event_to_shortcut_data(event: InputEvent) -> Dictionary:
 		"mod_alt": ev.alt_pressed
 	}
 
+# ========== 表达式常量替换 ==========
+# Expression 不内置 pi/tau 常量（会被当作未知标识符导致求值静默失败），
+# 求值前需将它们替换为数值字面量。按标识符整词替换，避免误伤其他名字。
+static func replace_expr_constants(s: String) -> String:
+	var out: String = ""
+	var i: int = 0
+	var n: int = s.length()
+	while i < n:
+		var c: String = s[i]
+		var is_letter: bool = (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or c == "_"
+		if is_letter:
+			var j: int = i
+			while j < n:
+				var cj: String = s[j]
+				if (cj >= "a" and cj <= "z") or (cj >= "A" and cj <= "Z") or (cj >= "0" and cj <= "9") or cj == "_":
+					j += 1
+				else:
+					break
+			var word: String = s.substr(i, j - i)
+			match word:
+				"pi", "PI":
+					out += "(3.14159265358979323846)"
+				"tau", "TAU":
+					out += "(6.28318530717958647692)"
+				_:
+					out += word
+			i = j
+		else:
+			out += c
+			i += 1
+	return out
+
 # ========== BPM 缓存工具（静态函数，所有文件共享） ==========
 # 构建 BPM 分段缓存：返回有序数组，每段包含 {start_beat, start_time, bpm, end_beat, end_time}
 static func build_bpm_cache(bpm_list: Array, offset_ms: int) -> Array:

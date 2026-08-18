@@ -503,11 +503,11 @@ func beat_to_time(beat: float) -> float:
 func time_to_beat(time_sec: float) -> float:
 	return Global.cached_time_to_beat(bpm_cache, time_sec)
 
-# 将 y= 表达式字符串清洗为可直接 parse 的形式：x 保留为变量名（作为 execute 入参），
+# 将 y= / y~ 表达式字符串清洗为可直接 parse 的形式：x 保留为变量名（作为 execute 入参），
 # 运行期只需 execute([x])，避免每帧每音符重新拼字符串 + parse
 static func _build_expr_clean(expr_str: String) -> String:
-	var s = expr_str.strip_edges()
-	if s.begins_with("y="):
+	var s = expr_str.strip_edges().replace("～", "~").replace("：", ":")
+	if s.begins_with("y=") or s.begins_with("y~") or s.begins_with("y:"):
 		s = s.substr(2)
 	s = s.replace("^", "**")
 	var func_names = ["sin", "cos", "tan", "abs", "sqrt", "log", "exp", "floor", "ceil", "round", "min", "max", "pi"]
@@ -528,7 +528,8 @@ static func _build_expr_clean(expr_str: String) -> String:
 			elif c in "0123456789+-*/().eE " or c == "*":
 				clean += c
 			i += 1
-	return clean
+	# pi/tau 不是 Expression 内置常量，替换为数值字面量
+	return Global.replace_expr_constants(clean)
 
 # 求值缓存表达式：build 时已预解析（_expr），运行期只执行不重新 parse
 func _eval_cached_expression(ev: Dictionary, x_val: float) -> float:
@@ -548,12 +549,45 @@ func _annotate_event_times(events: Array) -> void:
 			continue
 		ev["_st"] = beat_to_time(fraction_to_beat(ev.get("startTime", [0, 0, 1])))
 		ev["_et"] = beat_to_time(fraction_to_beat(ev.get("endTime", [0, 0, 1])))
-		var ev_type = str(ev.get("type", "Linear"))
-		if ev_type.begins_with("y="):
-			# 预解析 y= 表达式（x 为输入变量），避免每帧每音符重新 parse
+		var ev_type = str(ev.get("type", "Linear")).replace("～", "~").replace("：", ":")
+		if ev_type.begins_with("y=") or ev_type.begins_with("y~") or ev_type.begins_with("y:"):
+			# 预解析 y= / y~ / y: 表达式（x 为输入变量），避免每帧每音符重新 parse
 			var expression = Expression.new()
 			if expression.parse(_build_expr_clean(ev_type), ["x"]) == OK:
 				ev["_expr"] = expression
+				if ev_type.begins_with("y~"):
+					_annotate_shape_bounds(ev)
+
+# 预计算 y~ 形状端点/极值（f(0)/f(1)/采样min/max），用于将 f(x) 伸缩到 start~end
+func _annotate_shape_bounds(ev: Dictionary) -> void:
+	var f0 = _eval_cached_expression(ev, 0.0)
+	var f1 = _eval_cached_expression(ev, 1.0)
+	var fmin = min(f0, f1)
+	var fmax = max(f0, f1)
+	for i in range(1, 32):
+		var v = _eval_cached_expression(ev, float(i) / 32.0)
+		fmin = min(fmin, v)
+		fmax = max(fmax, v)
+	ev["_s_f0"] = f0
+	ev["_s_f1"] = f1
+	ev["_s_min"] = fmin
+	ev["_s_max"] = fmax
+
+# y~ 形状伸缩：f(0)→start、f(1)→end（端点归一化，正确支持 start>end 与任意形状）；
+# 闭合曲线（f(0)≈f(1)）按采样极值 min→start、max→end；恒定形状退化为线性
+func _shape_stretched_value(ev: Dictionary, prog: float, start_val: float, end_val: float) -> float:
+	if ev.get("_s_f0") == null:
+		_annotate_shape_bounds(ev)
+	var f0: float = ev["_s_f0"]
+	var f1: float = ev["_s_f1"]
+	var f = _eval_cached_expression(ev, prog)
+	if abs(f1 - f0) > 0.000001:
+		return start_val + (end_val - start_val) * (f - f0) / (f1 - f0)
+	var fmin: float = ev["_s_min"]
+	var fmax: float = ev["_s_max"]
+	if fmax - fmin > 0.000001:
+		return start_val + (end_val - start_val) * (f - fmin) / (fmax - fmin)
+	return start_val + (end_val - start_val) * prog
 
 func get_event_value_at_time(events: Array, time_sec: float, default_value: float) -> float:
 	if events.is_empty():
@@ -572,7 +606,7 @@ func get_event_value_at_time(events: Array, time_sec: float, default_value: floa
 			end_time = ev["_et"]
 		var start_val = float(ev.get("start", default_value))
 		var end_val = float(ev.get("end", default_value))
-		var ev_type = str(ev.get("type", "Linear"))
+		var ev_type = str(ev.get("type", "Linear")).replace("～", "~").replace("：", ":")
 		if time_sec < start_time:
 			break
 		if abs(start_time - end_time) < 0.0001:
@@ -582,6 +616,15 @@ func get_event_value_at_time(events: Array, time_sec: float, default_value: floa
 			if ev_type == "Linear":
 				var t = (time_sec - start_time) / (end_time - start_time)
 				last_value = start_val + (end_val - start_val) * t
+			elif ev_type.begins_with("y~") or ev_type.begins_with("y:"):
+				# x 恒定 0~1 并伸缩至始末时间
+				var prog = clamp((time_sec - start_time) / (end_time - start_time), 0.0, 1.0)
+				if ev_type.begins_with("y~"):
+					# 形状表达式：y 伸缩至 start~end（端点归一化）
+					last_value = _shape_stretched_value(ev, prog, start_val, end_val)
+				else:
+					# 原始值表达式：y 直接作为数值
+					last_value = _eval_cached_expression(ev, prog)
 			elif ev_type.begins_with("y="):
 				var x = time_sec - start_time
 				last_value = _eval_cached_expression(ev, x)

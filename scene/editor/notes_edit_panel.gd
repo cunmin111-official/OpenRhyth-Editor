@@ -2,6 +2,8 @@ extends Node2D
 
 signal note_data_changed
 
+const PropertyEditDialog = preload("res://scene/editor/property_edit_dialog.gd")
+
 enum PlaceMode { BROWSE, TAP, DRAG, HOLD }
 var current_place_mode: PlaceMode = PlaceMode.BROWSE
 var hold_start_beat: float = 0.0
@@ -964,76 +966,110 @@ func _quantize_selected_notes():
 			note["endTime"] = beat_to_fraction(end_beat)
 
 func edit_note_properties(note: Dictionary):
-	var note_json = JSON.stringify(note, "\t")
-	
-	var dialog = ConfirmationDialog.new()
-	dialog.title = "编辑 Note 属性 (JSON)"
-	dialog.ok_button_text = "确认"
-	dialog.cancel_button_text = "取消"
-	dialog.min_size = Vector2(600, 500)
-	
-	var vbox = VBoxContainer.new()
-	vbox.anchor_right = 1.0
-	vbox.anchor_bottom = 1.0
-	vbox.size = Vector2(600, 500)
-	
-	var label = Label.new()
-	label.text = "直接编辑 JSON 数据，确认后将更新 Note。"
-	
-	var text_edit = TextEdit.new()
-	text_edit.text = note_json
-	text_edit.custom_minimum_size = Vector2(500, 400)
-	text_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	text_edit.wrap_mode = TextEdit.LINE_WRAPPING_NONE
-	if Global.mono_font:
-		text_edit.add_theme_font_override("font", Global.mono_font)
-	
-	vbox.add_child(label)
-	vbox.add_child(text_edit)
-	dialog.add_child(vbox)
-	
-	# 连接确认信号
-	dialog.confirmed.connect(func():
-		var new_text = text_edit.text
-		var json = JSON.new()
-		var error = json.parse(new_text)
-		if error == OK and typeof(json.data) == TYPE_DICTIONARY:
-			var new_note = json.data
-			# 修正类型
-			if new_note.has("type"):
-				new_note["type"] = int(new_note["type"])
-			for field in ["startTime", "endTime"]:
-				if new_note.has(field) and typeof(new_note[field]) == TYPE_ARRAY:
-					var arr = new_note[field]
-					new_note[field] = [int(arr[0]), int(arr[1]), int(arr[2])]
-			
-			# 替换 note 对象
-			var idx = current_notes.find(note)
-			if idx != -1:
-				current_notes[idx] = new_note
-				# 同步到 current_judge_line["notes"]
-				var line_idx = current_judge_line["notes"].find(note)
-				if line_idx != -1:
-					current_judge_line["notes"][line_idx] = new_note
-				# 同步到 selected_notes
-				var sel_idx = selected_notes.find(note)
-				if sel_idx != -1:
-					selected_notes[sel_idx] = new_note
-				queue_redraw()
-				note_data_changed.emit()
-				print("Note 属性已更新")
-			else:
-				print("错误：找不到要编辑的 Note")
-		else:
-			var err_dialog = AcceptDialog.new()
-			err_dialog.title = "JSON 解析错误"
-			err_dialog.dialog_text = "无效的 JSON 格式:\n" + json.get_error_message()
-			add_child(err_dialog)
-			err_dialog.popup_centered()
-		dialog.queue_free()
+	var fields: Array = [
+		{"key": "type", "label": "类型 (0=Hold 1=Tap 2=Drag)"},
+		{"key": "startTime", "label": "开始节拍 (如 4.5 或 4 1/2)"},
+		{"key": "endTime", "label": "结束节拍 (Tap/Drag 与开始同步)"},
+		{"key": "positionX", "label": "X位置 (-100~100)"},
+		{"key": "size", "label": "大小"},
+		{"key": "alpha", "label": "透明度"},
+		{"key": "speed", "label": "速度"},
+		{"key": "visibleTime", "label": "可见时间"},
+		{"key": "isFake", "label": "假音符 (0/1)"},
+	]
+	var dialog = PropertyEditDialog.new(
+		"编辑 Note 属性",
+		fields,
+		func(key: String) -> String: return _note_display(note, key),
+		func(key: String, text: String) -> bool: return _note_apply_value(note, key, text),
+		func() -> String: return JSON.stringify(note, "\t"),
+		func(json_text: String) -> String: return _note_apply_json(note, json_text)
 	)
-	# 取消时直接释放对话框
-	dialog.canceled.connect(dialog.queue_free)
-	
 	add_child(dialog)
 	dialog.popup_centered()
+
+# 节拍显示为原生带分数格式（如 "4"、"2 1/2"），不转小数以避免精度丢失
+func _format_beat(fraction_arr: Array) -> String:
+	if fraction_arr.size() != 3:
+		return "0"
+	var integer: int = int(fraction_arr[0])
+	var num: int = abs(int(fraction_arr[1]))
+	var den: int = int(fraction_arr[2])
+	if den <= 0:
+		den = 1
+	var g: int = _gcd(num, den)
+	if g > 1:
+		num /= g
+		den /= g
+	integer += num / den
+	num = num % den
+	if num == 0:
+		return str(integer)
+	return "%d %d/%d" % [integer, num, den]
+
+func _gcd(a: int, b: int) -> int:
+	while b != 0:
+		var t: int = b
+		b = a % b
+		a = t
+	return a
+
+func _note_display(note: Dictionary, key: String) -> String:
+	match key:
+		"startTime":
+			return _format_beat(note.get("startTime", [0, 0, 1]))
+		"endTime":
+			return _format_beat(note.get("endTime", note.get("startTime", [0, 0, 1])))
+		_:
+			return str(note.get(key, ""))
+
+func _note_apply_value(note: Dictionary, key: String, text: String) -> bool:
+	match key:
+		"type":
+			if not text.is_valid_int():
+				return false
+			var t := int(text)
+			if t < 0 or t > 2:
+				return false
+			note["type"] = t
+		"startTime", "endTime":
+			var beat := _parse_beat_input(text)
+			if beat < 0:
+				return false
+			note[key] = beat_to_fraction(beat)
+			# Tap/Drag 为瞬时音符：开始与结束保持同步
+			if note.get("type", 1) != 0:
+				if key == "startTime":
+					note["endTime"] = (note["startTime"] as Array).duplicate()
+				else:
+					note["startTime"] = (note["endTime"] as Array).duplicate()
+		"isFake":
+			if not text.is_valid_int():
+				return false
+			note["isFake"] = int(text)
+		_:
+			if not text.is_valid_float():
+				return false
+			note[key] = text.to_float()
+	note_data_changed.emit()
+	queue_redraw()
+	return true
+
+func _note_apply_json(note: Dictionary, json_text: String) -> String:
+	var json := JSON.new()
+	if json.parse(json_text) != OK or typeof(json.data) != TYPE_DICTIONARY:
+		return "无效的 JSON 格式:\n" + json.get_error_message()
+	var new_note: Dictionary = json.data
+	if new_note.has("type"):
+		new_note["type"] = int(new_note["type"])
+	for field in ["startTime", "endTime"]:
+		if new_note.has(field) and typeof(new_note[field]) == TYPE_ARRAY and new_note[field].size() == 3:
+			var arr: Array = new_note[field]
+			new_note[field] = [int(arr[0]), int(arr[1]), int(arr[2])]
+	# 就地替换字段（保持对象引用不变，选择集与音符列表自动同步）
+	note.clear()
+	for k in new_note.keys():
+		note[k] = new_note[k]
+	note_data_changed.emit()
+	queue_redraw()
+	return ""

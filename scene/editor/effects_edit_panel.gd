@@ -2,6 +2,8 @@ extends Node2D
 
 signal effect_data_changed
 
+const PropertyEditDialog = preload("res://scene/editor/property_edit_dialog.gd")
+
 enum PlaceMode { BROWSE, INSTANT, CONTINUOUS }
 var current_place_mode: PlaceMode = PlaceMode.BROWSE
 var continuous_start_beat: float = 0.0
@@ -77,6 +79,7 @@ func _ready():
 func update_data(new_chart_data: Dictionary, new_judge_line = null):
 	chart_data = new_chart_data
 	current_judge_line = new_judge_line if typeof(new_judge_line) == TYPE_DICTIONARY else {}
+	_shape_bounds_cache.clear()
 	
 	current_events = []
 	var event_layers = current_judge_line.get("eventLayers", [])
@@ -637,18 +640,61 @@ func grid_to_screen(grid: Dictionary) -> Vector2:
 	var y = time_to_y(time)
 	return Vector2(x, y)
 
-# 表达式求值
+# 缓动类型归一化：全角 ～/： 转半角 ~/，保存与求值统一使用英文半角
+func _normalize_easing_type(t: String) -> String:
+	return t.strip_edges().replace("～", "~").replace("：", ":")
+
+# 表达式求值：支持 "y=..."（x 为经过秒数，y 直接作为数值）
+# "y~..."（x 恒定 0~1 表示事件内进度，y 作为形状伸缩到 start~end）
+# "y:..."（x 恒定 0~1 表示事件内进度，y 为函数原始取值）
 func eval_expression(expr_str: String, x: float) -> float:
-	if not expr_str.begins_with("y="):
+	expr_str = _normalize_easing_type(expr_str)
+	if expr_str.begins_with("y=") or expr_str.begins_with("y~") or expr_str.begins_with("y:"):
+		expr_str = expr_str.substr(2)
+	else:
 		return x
 	var expr = Expression.new()
-	var error = expr.parse(expr_str.substr(2), ["x"])
+	var error = expr.parse(Global.replace_expr_constants(expr_str.replace("^", "**")), ["x"])
 	if error != OK:
 		return x
 	var result = expr.execute([x])
 	if typeof(result) == TYPE_FLOAT or typeof(result) == TYPE_INT:
 		return float(result)
 	return x
+
+# y~ 形状伸缩求值缓存：type_str -> [f0, f1, fmin, fmax]
+var _shape_bounds_cache: Dictionary = {}
+
+func _get_shape_bounds(type_str: String) -> Array:
+	if _shape_bounds_cache.has(type_str):
+		return _shape_bounds_cache[type_str]
+	var f0 = eval_expression(type_str, 0.0)
+	var f1 = eval_expression(type_str, 1.0)
+	var fmin = min(f0, f1)
+	var fmax = max(f0, f1)
+	for i in range(1, 32):
+		var v = eval_expression(type_str, float(i) / 32.0)
+		fmin = min(fmin, v)
+		fmax = max(fmax, v)
+	var bounds = [f0, f1, fmin, fmax]
+	_shape_bounds_cache[type_str] = bounds
+	return bounds
+
+# y~ 形状伸缩：f(0)→start、f(1)→end（端点归一化，正确支持 start>end 与任意形状）；
+# 闭合曲线（f(0)≈f(1)，如 sin 脉冲）按采样极值 min→start、max→end；恒定形状退化为线性
+func _eval_shape_stretched(type_str: String, prog: float, start_val: float, end_val: float) -> float:
+	var b = _get_shape_bounds(type_str)
+	var f0: float = b[0]
+	var f1: float = b[1]
+	if abs(f1 - f0) > 0.000001:
+		var f = eval_expression(type_str, prog)
+		return start_val + (end_val - start_val) * (f - f0) / (f1 - f0)
+	var fmin: float = b[2]
+	var fmax: float = b[3]
+	if fmax - fmin > 0.000001:
+		var fc = eval_expression(type_str, prog)
+		return start_val + (end_val - start_val) * (fc - fmin) / (fmax - fmin)
+	return start_val + (end_val - start_val) * prog
 
 # 计算某一列在给定节拍时的实际值
 func get_value_at_beat(col: int, beat: float) -> float:
@@ -676,9 +722,21 @@ func get_value_at_beat(col: int, beat: float) -> float:
 				if start_beat == end_beat:
 					return start_val
 				var t = (beat - start_beat) / (end_beat - start_beat)
-				var type_str = ev.get("type", "Linear")
+				var type_str = _normalize_easing_type(str(ev.get("type", "Linear")))
 				if type_str == "Linear":
 					return start_val + (end_val - start_val) * t
+				elif type_str.begins_with("y~") or type_str.begins_with("y:"):
+					# x 恒定 0~1 并伸缩至始末时间
+					var start_sec = beat_to_time(start_beat)
+					var end_sec = beat_to_time(end_beat)
+					if end_sec <= start_sec:
+						return start_val
+					var prog = clamp((beat_to_time(beat) - start_sec) / (end_sec - start_sec), 0.0, 1.0)
+					if type_str.begins_with("y~"):
+						# 形状表达式：y 伸缩至 start~end（端点归一化）
+						return _eval_shape_stretched(type_str, prog, start_val, end_val)
+					# 原始值表达式：y 直接作为数值
+					return eval_expression(type_str, prog)
 				elif type_str.begins_with("y="):
 					var elapsed_sec = beat_to_time(beat) - beat_to_time(start_beat)
 					return eval_expression(type_str, elapsed_sec)
@@ -725,16 +783,18 @@ func place_instant_event(grid_data: Dictionary):
 	if is_overlap(col, beat, beat):
 		print("错误：该位置已有瞬时动效，不允许重叠")
 		return
+	# 新动效默认读取放置时刻的当前数值，而非程序默认值
+	var cur_val = get_value_at_beat(col, beat)
 	var event = {
 		"type": "Linear",
 		"startTime": beat_to_fraction(beat),
 		"endTime": beat_to_fraction(beat),
-		"start": DEFAULT_VALUES[col],
-		"end": DEFAULT_VALUES[col],
+		"start": cur_val,
+		"end": cur_val,
 		"isContinuous": 0
 	}
 	add_event_to_current_line(event, col)
-	print("放置瞬时动效: 列=", EFFECT_TYPES[col], " beat=", beat)
+	print("放置瞬时动效: 列=", EFFECT_TYPES[col], " beat=", beat, " 值=", cur_val)
 
 func place_continuous_event(start_beat: float, end_beat: float, effect_type: int):
 	if abs(start_beat - end_beat) < 0.001:
@@ -745,16 +805,19 @@ func place_continuous_event(start_beat: float, end_beat: float, effect_type: int
 	if is_overlap(effect_type, start, end):
 		print("错误：该时间段内已有动效，不允许重叠")
 		return
+	# 新动效默认读取起止时刻的当前数值，而非程序默认值
+	var start_val = get_value_at_beat(effect_type, start)
+	var end_val = get_value_at_beat(effect_type, end)
 	var event = {
 		"type": "Linear",
 		"startTime": beat_to_fraction(start),
 		"endTime": beat_to_fraction(end),
-		"start": DEFAULT_VALUES[effect_type],
-		"end": DEFAULT_VALUES[effect_type],
+		"start": start_val,
+		"end": end_val,
 		"isContinuous": 1
 	}
 	add_event_to_current_line(event, effect_type)
-	print("放置持续动效: 列=", EFFECT_TYPES[effect_type], " start=", start, " end=", end)
+	print("放置持续动效: 列=", EFFECT_TYPES[effect_type], " start=", start, " end=", end, " 值=", start_val, "~", end_val)
 
 func add_event_to_current_line(event_data: Dictionary, effect_type: int):
 	var event_layers = current_judge_line.get("eventLayers", [])
@@ -841,12 +904,12 @@ func fix_events_format():
 			ev["start"] = DEFAULT_VALUES[ev["_effect_type"]]
 		if not ev.has("end") and is_cont == 1:
 			ev["end"] = ev["start"]
-		# 如果是表达式，自动计算 start/end
-		if ev.has("type") and typeof(ev["type"]) == TYPE_STRING and ev["type"].begins_with("y="):
-			var start_sec = beat_to_time(start_beat)
-			var end_sec = beat_to_time(end_beat)
-			ev["start"] = eval_expression(ev["type"], 0.0)
-			ev["end"] = eval_expression(ev["type"], end_sec - start_sec)
+		# 如果是表达式，自动计算 start/end（y=/y:；并归一化全角符号）
+		if ev.has("type") and typeof(ev["type"]) == TYPE_STRING:
+			var norm_type := _normalize_easing_type(ev["type"])
+			if norm_type != ev["type"]:
+				ev["type"] = norm_type
+			_sync_expression_bounds(ev)
 	effect_data_changed.emit()
 	queue_redraw()
 	print("已修复所有动效的格式（isContinuous 等）")
@@ -1000,96 +1063,170 @@ func _quantize_selected_events():
 			ev["isContinuous"] = 1
 
 func edit_event_properties(event: Dictionary):
-	var display_event = event.duplicate()
-	display_event.erase("_effect_type")
-	display_event.erase("_is_continuous")
-	var event_json = JSON.stringify(display_event, "\t")
-	
-	var dialog = ConfirmationDialog.new()
-	dialog.title = "编辑动效属性 (JSON)"
-	dialog.ok_button_text = "确认"
-	dialog.cancel_button_text = "取消"
-	dialog.min_size = Vector2(600, 500)
-	
-	var vbox = VBoxContainer.new()
-	vbox.anchor_right = 1.0
-	vbox.anchor_bottom = 1.0
-	vbox.size = Vector2(600, 500)
-	
-	var label = Label.new()
-	label.text = "直接编辑 JSON 数据，确认后将更新动效。\n注意：type 字段为字符串，例如 \"Linear\" 或 \"y=x^2\"。"
-	var text_edit = TextEdit.new()
-	text_edit.text = event_json
-	text_edit.custom_minimum_size = Vector2(500, 400)
-	text_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	text_edit.wrap_mode = TextEdit.LINE_WRAPPING_NONE
-	if Global.mono_font:
-		text_edit.add_theme_font_override("font", Global.mono_font)
-	vbox.add_child(label)
-	vbox.add_child(text_edit)
-	dialog.add_child(vbox)
-	
-	dialog.confirmed.connect(func():
-		var new_text = text_edit.text
-		var json = JSON.new()
-		var error = json.parse(new_text)
-		if error == OK and typeof(json.data) == TYPE_DICTIONARY:
-			var new_event_data = json.data
-			if new_event_data.has("type"):
-				new_event_data["type"] = str(new_event_data["type"])
-			for field in ["startTime", "endTime"]:
-				if new_event_data.has(field) and typeof(new_event_data[field]) == TYPE_ARRAY:
-					var arr = new_event_data[field]
-					new_event_data[field] = [int(arr[0]), int(arr[1]), int(arr[2])]
-			
-			# 如果是表达式，自动计算 start/end
-			if new_event_data.has("type") and typeof(new_event_data["type"]) == TYPE_STRING and new_event_data["type"].begins_with("y="):
-				var start_beat = fraction_to_beat(new_event_data.get("startTime", [0,0,1]))
-				var end_beat = fraction_to_beat(new_event_data.get("endTime", start_beat))
-				var start_sec = beat_to_time(start_beat)
-				var end_sec = beat_to_time(end_beat)
-				new_event_data["start"] = eval_expression(new_event_data["type"], 0.0)
-				new_event_data["end"] = eval_expression(new_event_data["type"], end_sec - start_sec)
-			
-			new_event_data["_effect_type"] = event["_effect_type"]
-			new_event_data["_is_continuous"] = event["_is_continuous"]
-			
-			var new_start_beat = fraction_to_beat(new_event_data.get("startTime", [0,0,1]))
-			var new_end_beat = fraction_to_beat(new_event_data.get("endTime", new_start_beat))
-			if is_overlap(event["_effect_type"], new_start_beat, new_end_beat, event):
-				var err_dialog = AcceptDialog.new()
-				err_dialog.title = "重叠错误"
-				err_dialog.dialog_text = "修改后的动效与现有动效时间重叠，操作已取消。"
-				add_child(err_dialog)
-				err_dialog.popup_centered()
-				dialog.queue_free()
-				return
-			
-			var idx = current_events.find(event)
-			if idx != -1:
-				current_events[idx] = new_event_data
-				var effect_type = event["_effect_type"]
-				var event_key = EFFECT_TYPES[effect_type] + "Events"
-				var layer = current_judge_line["eventLayers"][0]
-				var orig_idx = layer[event_key].find(event)
-				if orig_idx != -1:
-					layer[event_key][orig_idx] = new_event_data
-				var sel_idx = selected_events.find(event)
-				if sel_idx != -1:
-					selected_events[sel_idx] = new_event_data
-				queue_redraw()
-				effect_data_changed.emit()
-				print("动效属性已更新")
-			else:
-				print("错误：找不到要编辑的动效")
-		else:
-			var err_dialog = AcceptDialog.new()
-			err_dialog.title = "JSON 解析错误"
-			err_dialog.dialog_text = "无效的 JSON 格式:\n" + json.get_error_message()
-			add_child(err_dialog)
-			err_dialog.popup_centered()
-		dialog.queue_free()
+	var is_cont: bool = event.get("_is_continuous", false)
+	var fields: Array = [
+		{"key": "type", "label": "缓动类型 (Linear / y=… / y~… / y:…)"},
+		{"key": "startTime", "label": "开始节拍 (如 4.5 或 4 1/2)"},
+		{"key": "endTime", "label": "结束节拍"},
+	]
+	if is_cont:
+		fields.append({"key": "start", "label": "起始值"})
+		fields.append({"key": "end", "label": "结束值"})
+	else:
+		fields.append({"key": "value", "label": "数值 (start 与 end 同步)"})
+
+	var dialog = PropertyEditDialog.new(
+		"编辑动效属性",
+		fields,
+		func(key: String) -> String: return _event_display(event, key),
+		func(key: String, text: String) -> bool: return _event_apply_value(event, key, text),
+		func() -> String: return _event_build_json(event),
+		func(json_text: String) -> String: return _event_apply_json(event, json_text)
 	)
-	dialog.canceled.connect(dialog.queue_free)
 	add_child(dialog)
 	dialog.popup_centered()
+
+# 节拍显示为原生带分数格式（如 "4"、"2 1/2"），不转小数以避免精度丢失
+func _format_beat(fraction_arr: Array) -> String:
+	if fraction_arr.size() != 3:
+		return "0"
+	var integer: int = int(fraction_arr[0])
+	var num: int = abs(int(fraction_arr[1]))
+	var den: int = int(fraction_arr[2])
+	if den <= 0:
+		den = 1
+	var g: int = _gcd(num, den)
+	if g > 1:
+		num /= g
+		den /= g
+	integer += num / den
+	num = num % den
+	if num == 0:
+		return str(integer)
+	return "%d %d/%d" % [integer, num, den]
+
+func _gcd(a: int, b: int) -> int:
+	while b != 0:
+		var t: int = b
+		b = a % b
+		a = t
+	return a
+
+func _event_display(event: Dictionary, key: String) -> String:
+	match key:
+		"type":
+			return str(event.get("type", "Linear"))
+		"startTime":
+			return _format_beat(event.get("startTime", [0, 0, 1]))
+		"endTime":
+			return _format_beat(event.get("endTime", event.get("startTime", [0, 0, 1])))
+		"value":
+			return str(event.get("start", DEFAULT_VALUES[event["_effect_type"]]))
+		_:
+			return str(event.get(key, 0.0))
+
+func _event_apply_value(event: Dictionary, key: String, text: String) -> bool:
+	var col: int = event["_effect_type"]
+	match key:
+		"type":
+			var t := _normalize_easing_type(text)
+			if t.is_empty():
+				return false
+			event["type"] = t
+			_sync_expression_bounds(event)
+		"startTime", "endTime":
+			var beat := _parse_beat_input(text)
+			if beat < 0:
+				return false
+			var start_beat := fraction_to_beat(event.get("startTime", [0, 0, 1]))
+			var end_beat := fraction_to_beat(event.get("endTime", start_beat))
+			if key == "startTime":
+				start_beat = beat
+			else:
+				end_beat = beat
+			if is_overlap(col, min(start_beat, end_beat), max(start_beat, end_beat), event):
+				print("错误：修改后的动效与现有动效时间重叠，已取消")
+				return false
+			event["startTime"] = beat_to_fraction(start_beat)
+			event["endTime"] = beat_to_fraction(end_beat)
+			var is_cont: bool = abs(start_beat - end_beat) > 0.001
+			event["isContinuous"] = 1 if is_cont else 0
+			event["_is_continuous"] = is_cont
+			_sync_expression_bounds(event)
+			_sort_layer_events(col)
+		"start", "end":
+			if not text.is_valid_float():
+				return false
+			event[key] = text.to_float()
+		"value":
+			if not text.is_valid_float():
+				return false
+			event["start"] = text.to_float()
+			event["end"] = text.to_float()
+	effect_data_changed.emit()
+	queue_redraw()
+	return true
+
+# y= 表达式按经过秒数、y: 表达式按 0~1 进度自动计算 start/end；y~（形状）保留 start/end 作为伸缩范围
+func _sync_expression_bounds(event: Dictionary) -> void:
+	var type_str := _normalize_easing_type(str(event.get("type", "Linear")))
+	var start_beat := fraction_to_beat(event.get("startTime", [0, 0, 1]))
+	var end_beat := fraction_to_beat(event.get("endTime", start_beat))
+	if type_str.begins_with("y="):
+		event["start"] = eval_expression(type_str, 0.0)
+		event["end"] = eval_expression(type_str, beat_to_time(end_beat) - beat_to_time(start_beat))
+	elif type_str.begins_with("y:"):
+		event["start"] = eval_expression(type_str, 0.0)
+		event["end"] = eval_expression(type_str, 1.0)
+
+func _sort_layer_events(effect_type: int) -> void:
+	var layers = current_judge_line.get("eventLayers", [])
+	if layers.is_empty():
+		return
+	var event_key: String = EFFECT_TYPES[effect_type] + "Events"
+	var arr: Array = layers[0].get(event_key, [])
+	arr.sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
+	current_events.sort_custom(func(a, b): return fraction_to_beat(a.get("startTime", [0, 0, 1])) < fraction_to_beat(b.get("startTime", [0, 0, 1])))
+
+func _event_build_json(event: Dictionary) -> String:
+	var display_event: Dictionary = event.duplicate()
+	for k in display_event.keys():
+		if k.begins_with("_"):
+			display_event.erase(k)
+	return JSON.stringify(display_event, "\t")
+
+func _event_apply_json(event: Dictionary, json_text: String) -> String:
+	var json := JSON.new()
+	if json.parse(json_text) != OK or typeof(json.data) != TYPE_DICTIONARY:
+		return "无效的 JSON 格式:\n" + json.get_error_message()
+	var new_data: Dictionary = json.data
+	if new_data.has("type"):
+		new_data["type"] = _normalize_easing_type(str(new_data["type"]))
+	for field in ["startTime", "endTime"]:
+		if new_data.has(field) and typeof(new_data[field]) == TYPE_ARRAY and new_data[field].size() == 3:
+			var arr: Array = new_data[field]
+			new_data[field] = [int(arr[0]), int(arr[1]), int(arr[2])]
+	var col: int = event["_effect_type"]
+	var new_start := fraction_to_beat(new_data.get("startTime", [0, 0, 1]))
+	var new_end := fraction_to_beat(new_data.get("endTime", new_start))
+	if is_overlap(col, min(new_start, new_end), max(new_start, new_end), event):
+		return "修改后的动效与现有动效时间重叠，操作已取消。"
+	# 就地替换字段（保持对象引用不变，选择集与事件列表自动同步）
+	for k in event.keys():
+		if not k.begins_with("_"):
+			event.erase(k)
+	for k in new_data.keys():
+		if not k.begins_with("_"):
+			event[k] = new_data[k]
+	if not event.has("start"):
+		event["start"] = DEFAULT_VALUES[col]
+	var is_cont: bool = abs(new_start - new_end) > 0.001
+	event["isContinuous"] = 1 if is_cont else 0
+	event["_is_continuous"] = is_cont
+	if is_cont and not event.has("end"):
+		event["end"] = event["start"]
+	_sync_expression_bounds(event)
+	_sort_layer_events(col)
+	effect_data_changed.emit()
+	queue_redraw()
+	return ""

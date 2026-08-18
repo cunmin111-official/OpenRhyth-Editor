@@ -161,7 +161,7 @@ offset_top = 10.0
 offset_right = 94.0
 offset_bottom = 33.0
 theme_override_font_sizes/font_size = 20
-text = "Offset 设置              音乐时长"
+text = "Offset 设置                           音乐时长"
 
 [node name="OffsetLineEdit" type="LineEdit" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1707552176]
 layout_mode = 0
@@ -292,8 +292,6 @@ offset_top = 130.0
 offset_right = 800.0
 offset_bottom = 380.0
 select_mode = 2
-allow_reselect = false
-allow_rmb_select = false
 
 [node name="ApplyBpmFromMidiButton" type="Button" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1757967196]
 layout_mode = 0
@@ -309,7 +307,6 @@ offset_left = 540.0
 offset_top = 425.0
 offset_right = 1000.0
 offset_bottom = 445.0
-text = ""
 
 [node name="MidiOffsetLabel" type="Label" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1757967199]
 layout_mode = 0
@@ -329,9 +326,9 @@ offset_bottom = 486.0
 text = "0"
 
 [node name="MidiFileDialog" type="FileDialog" parent="CanvasLayer/EditArea/MetaEditPanel" unique_id=1757967198]
-title = "选择 MIDI 文件"
-access = 2
+title = "Open a File"
 file_mode = 0
+access = 2
 filters = PackedStringArray("*.mid", "*.midi")
 
 [node name="NotesEditPanel" type="Node2D" parent="CanvasLayer/EditArea" unique_id=1567283473]
@@ -438,10 +435,10 @@ offset_bottom = -32.0
 [connection signal="pressed" from="CanvasLayer/EditArea/MetaEditPanel/DeleteBpmButton" to="." method="_on_delete_bpm_button_pressed"]
 [connection signal="pressed" from="CanvasLayer/EditArea/MetaEditPanel/AutoFillDurationButton" to="." method="_on_auto_fill_duration_pressed"]
 [connection signal="pressed" from="CanvasLayer/EditArea/MetaEditPanel/ImportMidiButton" to="." method="_on_import_midi_button_pressed"]
-[connection signal="file_selected" from="CanvasLayer/EditArea/MetaEditPanel/MidiFileDialog" to="." method="_on_midi_file_selected"]
 [connection signal="multi_selected" from="CanvasLayer/EditArea/MetaEditPanel/MidiTrackList" to="." method="_on_midi_track_selected"]
 [connection signal="pressed" from="CanvasLayer/EditArea/MetaEditPanel/ApplyBpmFromMidiButton" to="." method="_on_apply_bpm_from_midi_pressed"]
 [connection signal="text_changed" from="CanvasLayer/EditArea/MetaEditPanel/MidiOffsetEdit" to="." method="_on_midi_offset_changed"]
+[connection signal="file_selected" from="CanvasLayer/EditArea/MetaEditPanel/MidiFileDialog" to="." method="_on_midi_file_selected"]
 [connection signal="pressed" from="CanvasLayer/EditArea/TextureEditPanel/AddButton" to="CanvasLayer/EditArea/TextureEditPanel" method="_on_add_button_pressed"]
 [connection signal="pressed" from="CanvasLayer/EditArea/TextureEditPanel/DeleteButton" to="CanvasLayer/EditArea/TextureEditPanel" method="_on_delete_button_pressed"]
 [connection signal="pressed" from="CanvasLayer/EditArea/TextureEditPanel/TextureManageButton" to="CanvasLayer/EditArea/TextureEditPanel" method="_on_texture_manage_button_pressed"]
