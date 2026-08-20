@@ -144,6 +144,8 @@ func _ensure_defaults() -> void:
 		settings["editor"]["subdivision"] = 1
 	if not settings["editor"].has("pixels_per_second"):
 		settings["editor"]["pixels_per_second"] = 500
+	if not settings["editor"].has("mouse_wheel_sensitivity"):
+		settings["editor"]["mouse_wheel_sensitivity"] = -100.0
 	var sc = settings["shortcuts"]
 	for page_name in DEFAULT_SHORTCUTS:
 		if not sc.has(page_name):
@@ -225,6 +227,20 @@ func set_editor_pixels_per_second(val: float) -> void:
 	if not settings.has("editor"):
 		settings["editor"] = {}
 	settings["editor"]["pixels_per_second"] = clampf(val, 50.0, 3000.0)
+	save_settings()
+
+# ========== 编辑器滚轮灵敏度 ==========
+# 单位：像素/格（一次滚轮滚动的平移像素量，正负号控制方向；不能为 0）
+func get_mouse_wheel_sensitivity() -> float:
+	return settings.get("editor", {}).get("mouse_wheel_sensitivity", -100.0)
+
+func set_mouse_wheel_sensitivity(val: float) -> void:
+	if not settings.has("editor"):
+		settings["editor"] = {}
+	val = clampf(val, -2000.0, 2000.0)
+	if absf(val) < 1.0:
+		val = 1.0 if val >= 0.0 else -1.0
+	settings["editor"]["mouse_wheel_sensitivity"] = val
 	save_settings()
 
 # ========== 延迟校准 ==========

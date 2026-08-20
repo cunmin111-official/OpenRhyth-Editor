@@ -472,11 +472,13 @@ func _input(event: InputEvent):
 				get_viewport().set_input_as_handled()
 	
 	if visible and event is InputEventMouseButton:
+		# 滚轮（灵敏度：px/格，负值翻转方向）
+		var wheel_delta: float = Global.get_mouse_wheel_sensitivity() / maxf(pixels_per_second, 1.0)
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			v_scroll.value -= 0.2
+			v_scroll.value -= wheel_delta
 			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			v_scroll.value += 0.2
+			v_scroll.value += wheel_delta
 			get_viewport().set_input_as_handled()
 		
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

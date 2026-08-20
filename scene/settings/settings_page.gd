@@ -116,59 +116,120 @@ func _build_ui() -> void:
 	shortcut_action_list.custom_minimum_size.x = 1500
 	action_scroll.add_child(shortcut_action_list)
 	
-	# === 自动保存 Tab ===
-	var autosave_tab = Control.new()
-	autosave_tab.name = "自动保存"
-	tab_container.add_child(autosave_tab)
-	
+	# === 编辑器 Tab（含自动保存） ===
+	var editor_tab = Control.new()
+	editor_tab.name = "编辑器"
+	tab_container.add_child(editor_tab)
+
+	var ed_title = Label.new()
+	ed_title.text = "编辑器设置"
+	ed_title.position = Vector2(50, 30)
+	ed_title.add_theme_font_size_override("font_size", 28)
+	editor_tab.add_child(ed_title)
+
+	# ---- 鼠标滚轮灵敏度 ----
+	var wheel_label = Label.new()
+	wheel_label.text = "鼠标滚轮灵敏度"
+	wheel_label.position = Vector2(50, 100)
+	wheel_label.add_theme_font_size_override("font_size", 22)
+	wheel_label.custom_minimum_size = Vector2(260, 40)
+	editor_tab.add_child(wheel_label)
+
+	var wheel_desc = Label.new()
+	wheel_desc.text = "滚轮滚动一次平移的像素量（正值=当前方向，负值=反转方向；不能为 0）"
+	wheel_desc.position = Vector2(50, 135)
+	wheel_desc.add_theme_font_size_override("font_size", 16)
+	wheel_desc.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	wheel_desc.custom_minimum_size = Vector2(760, 30)
+	editor_tab.add_child(wheel_desc)
+
+	var wheel_slider = HSlider.new()
+	wheel_slider.position = Vector2(50, 180)
+	wheel_slider.size = Vector2(500, 40)
+	wheel_slider.min_value = -2000.0
+	wheel_slider.max_value = 2000.0
+	wheel_slider.step = 25.0
+	wheel_slider.value = Global.get_mouse_wheel_sensitivity()
+	editor_tab.add_child(wheel_slider)
+
+	var wheel_value_label = Label.new()
+	wheel_value_label.text = "%d px" % int(wheel_slider.value)
+	wheel_value_label.position = Vector2(570, 180)
+	wheel_value_label.add_theme_font_size_override("font_size", 22)
+	wheel_value_label.custom_minimum_size = Vector2(140, 40)
+	editor_tab.add_child(wheel_value_label)
+
+	var wheel_note = Label.new()
+	wheel_note.text = "提示：负值代表滚轮向上时时间前进（谱面向下滚动），用于修正方向相反的问题。"
+	wheel_note.position = Vector2(50, 250)
+	wheel_note.add_theme_font_size_override("font_size", 18)
+	wheel_note.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+	wheel_note.custom_minimum_size = Vector2(900, 40)
+	editor_tab.add_child(wheel_note)
+
+	wheel_slider.value_changed.connect(func(val: float):
+		if absf(val) < 1.0:
+			val = 25.0 if val >= 0.0 else -25.0
+			wheel_slider.value = val
+		Global.set_mouse_wheel_sensitivity(val)
+		wheel_value_label.text = "%d px" % int(val)
+	)
+
+	# ---- 自动保存 ----
+	var as_sep = ColorRect.new()
+	as_sep.position = Vector2(50, 300)
+	as_sep.size = Vector2(800, 2)
+	as_sep.color = Color(0.4, 0.4, 0.4, 0.5)
+	editor_tab.add_child(as_sep)
+
 	var as_title = Label.new()
-	as_title.text = "自动保存设置"
-	as_title.position = Vector2(50, 30)
-	as_title.add_theme_font_size_override("font_size", 28)
-	autosave_tab.add_child(as_title)
-	
+	as_title.text = "自动保存"
+	as_title.position = Vector2(50, 310)
+	as_title.add_theme_font_size_override("font_size", 22)
+	editor_tab.add_child(as_title)
+
 	var toggle_label = Label.new()
 	toggle_label.text = "启用自动保存"
-	toggle_label.position = Vector2(50, 100)
+	toggle_label.position = Vector2(50, 370)
 	toggle_label.add_theme_font_size_override("font_size", 22)
 	toggle_label.custom_minimum_size = Vector2(200, 40)
-	autosave_tab.add_child(toggle_label)
-	
+	editor_tab.add_child(toggle_label)
+
 	auto_save_toggle = CheckButton.new()
-	auto_save_toggle.position = Vector2(260, 100)
+	auto_save_toggle.position = Vector2(260, 370)
 	auto_save_toggle.custom_minimum_size = Vector2(80, 40)
-	autosave_tab.add_child(auto_save_toggle)
-	
+	editor_tab.add_child(auto_save_toggle)
+
 	var interval_desc = Label.new()
 	interval_desc.text = "保存间隔（每 N 分钟自动保存一次 .autosave.rwc）"
-	interval_desc.position = Vector2(50, 170)
+	interval_desc.position = Vector2(50, 440)
 	interval_desc.add_theme_font_size_override("font_size", 22)
 	interval_desc.custom_minimum_size = Vector2(600, 40)
-	autosave_tab.add_child(interval_desc)
-	
+	editor_tab.add_child(interval_desc)
+
 	interval_slider = HSlider.new()
-	interval_slider.position = Vector2(50, 230)
+	interval_slider.position = Vector2(50, 500)
 	interval_slider.size = Vector2(400, 40)
 	interval_slider.min_value = 1.0
 	interval_slider.max_value = 60.0
 	interval_slider.step = 1.0
-	autosave_tab.add_child(interval_slider)
-	
+	editor_tab.add_child(interval_slider)
+
 	interval_label = Label.new()
 	interval_label.text = "5 分钟"
-	interval_label.position = Vector2(470, 230)
+	interval_label.position = Vector2(470, 500)
 	interval_label.add_theme_font_size_override("font_size", 22)
 	interval_label.custom_minimum_size = Vector2(120, 40)
-	autosave_tab.add_child(interval_label)
-	
+	editor_tab.add_child(interval_label)
+
 	var as_note = Label.new()
 	as_note.text = "自动保存文件将保存在原谱面同目录下，文件名为「原文件名.autosave.rwc」，不会覆盖原文件。"
-	as_note.position = Vector2(50, 310)
+	as_note.position = Vector2(50, 580)
 	as_note.add_theme_font_size_override("font_size", 18)
 	as_note.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 	as_note.custom_minimum_size = Vector2(900, 40)
-	autosave_tab.add_child(as_note)
-	
+	editor_tab.add_child(as_note)
+
 	# === 游玩 Tab ===
 	var play_tab = Control.new()
 	play_tab.name = "游玩"
