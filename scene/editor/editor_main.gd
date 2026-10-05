@@ -65,6 +65,8 @@ var _midi_beat_positions: Array = []  # 选中轨道合并后的音符节拍位�
 
 # 是否保存
 var is_saved: bool = true
+# 未保存提示框是否已弹出（防止重复弹出）
+var _unsaved_dialog_open: bool = false
 
 # 编辑模式
 enum EditMode {
@@ -89,6 +91,10 @@ var pixels_per_second: float = 500.0  # 像素密度
 var auto_save_timer: Timer = null
 var last_auto_save_path: String = ""
 
+func _enter_tree():
+	# 接管窗口关闭请求，以便在有未保存修改时先询问
+	get_tree().auto_accept_quit = false
+
 func _ready():
 	# 从设置加载偏好
 	subdivision = Global.get_editor_subdivision()
@@ -109,7 +115,17 @@ func _ready():
 	if Global.selected_rwc_path != "":
 		file_path_label.text = "当前谱面: " + Global.selected_rwc_path
 		current_rwc_path = Global.selected_rwc_path
-		load_chart_file(current_rwc_path)
+		# 从预览页返回时优先读取预览前写入的 autosave，避免切换场景重载主文件而丢失修改
+		var load_path = current_rwc_path
+		var auto_save_path = get_auto_save_path()
+		var use_autosave = Global.preview_autosave_path != "" \
+			and Global.preview_autosave_path == auto_save_path \
+			and FileAccess.file_exists(auto_save_path)
+		if use_autosave:
+			load_path = auto_save_path
+			# 恢复进入预览前的未保存状态（主文件可能仍未包含这些修改）
+			is_saved = not Global.preview_unsaved
+		load_chart_file(load_path)
 		refresh_judge_line_tree()
 		refresh_meta_panel()
 	else:
@@ -375,10 +391,54 @@ func _on_shader_manage_button_pressed() -> void:
 	print("切换到 Shader 编辑模式")
 
 func _on_return_button_pressed() -> void:
-	# 回主页时重置滚动位置
-	Global.editor_scroll_position = 0.0
-	Global.preview_time = 0.0
-	get_tree().change_scene_to_file("res://scene/start_scene.tscn")
+	_confirm_unsaved_changes(func():
+		# 回主页时重置滚动位置与预览中转状态
+		Global.editor_scroll_position = 0.0
+		Global.preview_time = 0.0
+		Global.preview_autosave_path = ""
+		Global.preview_unsaved = false
+		get_tree().change_scene_to_file("res://scene/start_scene.tscn")
+	)
+
+# 有未保存修改时先询问，确认后执行 action（返回主页与关闭窗口共用）
+func _confirm_unsaved_changes(action: Callable) -> void:
+	if is_saved:
+		action.call()
+		return
+	if _unsaved_dialog_open:
+		return
+	_unsaved_dialog_open = true
+	var dialog = ConfirmationDialog.new()
+	dialog.title = "未保存的修改"
+	dialog.dialog_text = "当前谱面有未保存的修改，是否保存？"
+	dialog.ok_button_text = "保存并离开"
+	dialog.cancel_button_text = "取消"
+	dialog.add_button("不保存离开", true, "discard")
+	dialog.min_size = Vector2(460, 180)
+	add_child(dialog)
+	dialog.confirmed.connect(func():
+		_unsaved_dialog_open = false
+		if save_chart_file():
+			is_saved = true
+			update_saved_time_label()
+			_update_auto_save_timer()
+			dialog.queue_free()
+			action.call()
+		else:
+			# 保存失败则留在编辑器，避免丢失修改
+			dialog.queue_free()
+	)
+	dialog.custom_action.connect(func(a: StringName):
+		if a == &"discard":
+			_unsaved_dialog_open = false
+			dialog.queue_free()
+			action.call()
+	)
+	dialog.canceled.connect(func():
+		_unsaved_dialog_open = false
+		dialog.queue_free()
+	)
+	dialog.popup_centered()
 
 func _on_preview_button_pressed() -> void:
 	var scroll_pos = 0.0
@@ -391,6 +451,13 @@ func _on_preview_button_pressed() -> void:
 	Global.editor_pre_preview_scroll = scroll_pos
 	Global.preview_time = scroll_pos
 	Global.editor_scroll_position = scroll_pos
+	# 预览是独立场景，先把当前内存中的谱面落到 autosave，供预览页与返回编辑器时读取，
+	# 避免切换场景重载主文件而丢失未保存的修改
+	Global.preview_autosave_path = save_autosave_file()
+	# 记录当前未保存状态，返回编辑器时原样恢复
+	Global.preview_unsaved = not is_saved
+	# 刚写过一次自动保存，重置计时器重新计时
+	_update_auto_save_timer()
 	get_tree().change_scene_to_file("res://scene/preview/preview_page.tscn")
 
 # 保存按钮
@@ -440,6 +507,9 @@ func save_chart_file() -> bool:
 		return false
 	file.store_string(json_string)
 	file.close()
+	# 主文件已写入最新数据，清除预览用的 autosave 中转标记
+	Global.preview_autosave_path = ""
+	Global.preview_unsaved = false
 	print("保存成功: ", current_rwc_path)
 	return true
 
@@ -705,20 +775,32 @@ func _update_auto_save_timer() -> void:
 	else:
 		auto_save_timer.stop()
 
-func _on_auto_save_timer_timeout() -> void:
+# 自动保存文件路径：原文件名.autosave.rwc（与主文件同目录）
+func get_auto_save_path() -> String:
 	if current_rwc_path.is_empty():
-		return
-	# 自动保存到 .autosave.rwc，不覆盖原文件
-	var auto_save_path = current_rwc_path.replace(".rwc", ".autosave.rwc")
+		return ""
+	return current_rwc_path.replace(".rwc", ".autosave.rwc")
+
+# 将当前谱面写入 autosave（不覆盖主文件）；成功返回写入路径，失败返回空串
+func save_autosave_file() -> String:
+	var auto_save_path = get_auto_save_path()
+	if auto_save_path.is_empty():
+		return ""
 	sort_all_events()
-	var json_string = JSON.stringify(chart_data, "\t")
 	var file = FileAccess.open(auto_save_path, FileAccess.WRITE)
-	if file:
-		file.store_string(json_string)
-		file.close()
-		var now = Time.get_datetime_string_from_system().replace("T", " ")
+	if file == null:
+		print("[自动保存] 无法写入: ", auto_save_path)
+		return ""
+	file.store_string(JSON.stringify(chart_data, "\t"))
+	file.close()
+	var now = Time.get_datetime_string_from_system().replace("T", " ")
+	if auto_saved_at_label:
 		auto_saved_at_label.text = "自动保存于 " + now
-		print("[自动保存] 已保存到: ", auto_save_path)
+	print("[自动保存] 已保存到: ", auto_save_path)
+	return auto_save_path
+
+func _on_auto_save_timer_timeout() -> void:
+	save_autosave_file()
 
 # 更新统计显示（根据选中的判定线或全局）
 func update_metadata_display():
@@ -1246,6 +1328,12 @@ func _on_any_scroll_changed(value):
 func _exit_tree():
 	if audio_player:
 		audio_player.stop()
+	# 离开编辑器后恢复默认关闭行为，其他页面不受影响
+	get_tree().auto_accept_quit = true
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_confirm_unsaved_changes(func(): get_tree().quit())
 
 # 从文件路径加载音频（支持项目外路径）
 func load_audio_from_path(path: String) -> AudioStream:

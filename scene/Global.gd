@@ -8,6 +8,11 @@ var preview_time: float = 0.0
 var editor_scroll_position: float = 0.0
 # 进入预览前的编辑器滚动位置（预览播完后回退用）
 var editor_pre_preview_scroll: float = 0.0
+# 预览用的自动保存中转路径：点击预览时写入 autosave 并记录路径，
+# 预览页与返回编辑器时优先读取它，避免场景切换丢失未保存的修改
+var preview_autosave_path: String = ""
+# 进入预览前的未保存状态：返回编辑器时恢复，避免把已保存的谱面误标为未保存
+var preview_unsaved: bool = false
 # 等宽字体（用于 JSON 编辑器等）
 var mono_font: Font = null
 

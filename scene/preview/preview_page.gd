@@ -197,7 +197,11 @@ func bind_video_textures() -> void:
 			print("[预览] ViewportTexture 已绑定")
 
 func load_chart_data() -> void:
-	var path = Global.selected_rwc_path
+	# 编辑器点击预览时会先把当前内存数据写入 autosave，这里优先读取它，
+	# 使预览显示未保存的修改，而不是磁盘上主文件的旧内容
+	var path = Global.preview_autosave_path
+	if path == "" or not FileAccess.file_exists(path):
+		path = Global.selected_rwc_path
 	if path == "" or not FileAccess.file_exists(path):
 		print("[预览] 谱面文件不存在: ", path)
 		return
@@ -1232,7 +1236,8 @@ func _trigger_note_effect(note_data: Dictionary, line_node: Node3D, for_hold: bo
 	if note_data.get("_effect_triggered", false):
 		return
 	var pos_x = float(note_data.get("positionX", 0.0))
-	var effect_pos = line_node.global_position + Vector3(pos_x, 0.0, 0.0)
+	# positionX 是判定线局部坐标，需经判定线变换后再转世界坐标（否则判定线旋转/翻转后特效位置与音符镜像相反）
+	var effect_pos = line_node.to_global(Vector3(pos_x, 0.0, 0.0))
 	if for_hold:
 		note_data["_effect_sprite"] = spawn_judge_effect(effect_pos, true)
 	else:
@@ -1302,7 +1307,8 @@ func update_hold_note(body: Sprite3D, head: Sprite3D, note_data: Dictionary, tim
 	var effect_sprite: Sprite3D = note_data.get("_effect_sprite")
 	var pos_x = float(note_data.get("positionX", 0.0))
 	if effect_sprite and is_instance_valid(effect_sprite) and effect_sprite.visible:
-		effect_sprite.position = line_node.global_position + Vector3(pos_x, 0.0, 0.0)
+		# positionX 是判定线局部坐标，需经判定线变换后再转世界坐标
+		effect_sprite.position = line_node.to_global(Vector3(pos_x, 0.0, 0.0))
 
 	# Hold 的可见性：start 还太远（整体不可见）→ 隐藏；end 已过时（已结束）→ 隐藏
 	if time_diff_start > visible_time_s or time_diff_end < 0:

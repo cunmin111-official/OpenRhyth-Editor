@@ -944,7 +944,8 @@ func process_input_judgment() -> void:
 		if grade != "":
 			# Calculate effect world position
 			var pos_x = float(earliest_note.get("positionX", 0.0))
-			var effect_pos = earliest_line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
+			# positionX 是判定线局部坐标，需经判定线变换后再转世界坐标（否则判定线旋转/翻转后特效位置与音符镜像相反）
+			var effect_pos = earliest_line_info["node"].to_global(Vector3(pos_x, 0.0, 0.0))
 			
 			if earliest_type == 0:
 				# Hold: store grade but defer scoring
@@ -1022,7 +1023,8 @@ func process_drag_while_held() -> void:
 				last_judge_error_ms = 0.0
 				apply_judgment(note_data, "perfect1")
 				var pos_x = float(note_data.get("positionX", 0.0))
-				var effect_pos = line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
+				# positionX 是判定线局部坐标，需经判定线变换后再转世界坐标
+				var effect_pos = line_info["node"].to_global(Vector3(pos_x, 0.0, 0.0))
 				spawn_judge_effect(effect_pos, "perfect1")
 
 func process_hold_end_and_release() -> void:
@@ -1073,7 +1075,8 @@ func update_hold_effect_positions() -> void:
 		var line_info = entry.get("line_info")
 		if effect and line_info != null and note_data != null:
 			var pos_x = float(note_data.get("positionX", 0.0))
-			effect.global_position = line_info["node"].global_position + Vector3(pos_x, 0.0, 0.0)
+			# positionX 是判定线局部坐标，需经判定线变换后再转世界坐标
+			effect.global_position = line_info["node"].to_global(Vector3(pos_x, 0.0, 0.0))
 
 func _process(delta: float) -> void:
 	_update_judge_effects(delta)

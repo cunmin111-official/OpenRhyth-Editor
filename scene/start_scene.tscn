@@ -67,12 +67,12 @@ text = "新建谱面"
 
 [node name="Title" type="Label" parent="." unique_id=437183870]
 layout_mode = 0
-offset_left = 760.0
+offset_left = 809.0
 offset_top = 233.0
-offset_right = 1249.0
+offset_right = 1298.0
 offset_bottom = 313.0
 theme_override_font_sizes/font_size = 48
-text = "开源洛盛 v0.5.0pre2"
+text = "开源洛盛 v0.5.0"
 
 [node name="VersionLabel" type="Label" parent="." unique_id=180034980]
 layout_mode = 0
