@@ -3,6 +3,7 @@ extends Node2D
 signal effect_data_changed
 
 const PropertyEditDialog = preload("res://scene/editor/property_edit_dialog.gd")
+const EasingPresetDialog = preload("res://scene/editor/easing_preset_dialog.gd")
 
 enum PlaceMode { BROWSE, INSTANT, CONTINUOUS }
 var current_place_mode: PlaceMode = PlaceMode.BROWSE
@@ -698,6 +699,27 @@ func _eval_shape_stretched(type_str: String, prog: float, start_val: float, end_
 		return start_val + (end_val - start_val) * (fc - fmin) / (fmax - fmin)
 	return start_val + (end_val - start_val) * prog
 
+# 单个持续事件在时间进度 prog(0~1) 处的实际取值（与 get_value_at_beat 的持续事件分支语义一致）
+func _event_value_at_progress(event: Dictionary, prog: float) -> float:
+	var col: int = event["_effect_type"]
+	var start_val = float(event.get("start", DEFAULT_VALUES[col]))
+	var end_val = float(event.get("end", start_val))
+	var type_str = _normalize_easing_type(str(event.get("type", "Linear")))
+	if type_str == "Linear":
+		return start_val + (end_val - start_val) * prog
+	elif type_str.begins_with("y~"):
+		return _eval_shape_stretched(type_str, prog, start_val, end_val)   # 形状伸缩，与运行时一致
+	elif type_str.begins_with("y:"):
+		return eval_expression(type_str, prog)                            # x 为 0~1 进度
+	elif type_str.begins_with("y="):
+		var sb = fraction_to_beat(event.get("startTime", [0, 0, 1]))
+		var eb = fraction_to_beat(event.get("endTime", sb))
+		var dur = beat_to_time(eb) - beat_to_time(sb)
+		if dur <= 0.0:
+			return start_val
+		return eval_expression(type_str, prog * dur)                      # x 为经过秒数
+	return start_val + (end_val - start_val) * prog
+
 # 计算某一列在给定节拍时的实际值
 func get_value_at_beat(col: int, beat: float) -> float:
 	var events = []
@@ -1064,6 +1086,25 @@ func _quantize_selected_events():
 			ev["endTime"] = beat_to_fraction(end_beat)
 			ev["isContinuous"] = 1
 
+# 打开缓动预设窗口并把结果写回事件（仅写 type / start / end，不新增字段）
+func _open_easing_presets(event: Dictionary, property_dialog) -> void:
+	var col: int = event["_effect_type"]
+	var cur_type := str(event.get("type", "Linear"))
+	var cur_start = float(event.get("start", DEFAULT_VALUES[col]))
+	var cur_end = float(event.get("end", cur_start))
+	var dlg = EasingPresetDialog.new(cur_type, cur_start, cur_end, func(new_type: String, new_start: float, new_end: float):
+		event["type"] = new_type
+		event["start"] = new_start
+		event["end"] = new_end
+		# y~ 语义下 start/end 就是伸缩范围，不需要 _sync_expression_bounds
+		effect_data_changed.emit()
+		queue_redraw()
+		if property_dialog != null and is_instance_valid(property_dialog):
+			property_dialog.refresh_all()
+	)
+	add_child(dlg)
+	dlg.popup_centered()
+
 func edit_event_properties(event: Dictionary):
 	var is_cont: bool = event.get("_is_continuous", false)
 	var fields: Array = [
@@ -1077,13 +1118,21 @@ func edit_event_properties(event: Dictionary):
 	else:
 		fields.append({"key": "value", "label": "数值 (start 与 end 同步)"})
 
+	var curve_provider := Callable()
+	var on_open_presets := Callable()
+	if is_cont:
+		curve_provider = func(prog: float) -> float: return _event_value_at_progress(event, prog)
+		on_open_presets = func(dlg): _open_easing_presets(event, dlg)
+
 	var dialog = PropertyEditDialog.new(
 		"编辑动效属性",
 		fields,
 		func(key: String) -> String: return _event_display(event, key),
 		func(key: String, text: String) -> bool: return _event_apply_value(event, key, text),
 		func() -> String: return _event_build_json(event),
-		func(json_text: String) -> String: return _event_apply_json(event, json_text)
+		func(json_text: String) -> String: return _event_apply_json(event, json_text),
+		curve_provider,
+		on_open_presets
 	)
 	add_child(dialog)
 	dialog.popup_centered()
@@ -1133,6 +1182,10 @@ func _event_apply_value(event: Dictionary, key: String, text: String) -> bool:
 		"type":
 			var t := _normalize_easing_type(text)
 			if t.is_empty():
+				return false
+			var verr := Global.validate_expression(t)
+			if not verr.is_empty():
+				print("缓动类型非法，已取消修改：", verr)
 				return false
 			event["type"] = t
 			_sync_expression_bounds(event)
@@ -1203,7 +1256,11 @@ func _event_apply_json(event: Dictionary, json_text: String) -> String:
 		return "无效的 JSON 格式:\n" + json.get_error_message()
 	var new_data: Dictionary = json.data
 	if new_data.has("type"):
-		new_data["type"] = _normalize_easing_type(str(new_data["type"]))
+		var t := _normalize_easing_type(str(new_data["type"]))
+		var verr := Global.validate_expression(t)
+		if not verr.is_empty():
+			return "缓动类型非法：" + verr
+		new_data["type"] = t
 	for field in ["startTime", "endTime"]:
 		if new_data.has(field) and typeof(new_data[field]) == TYPE_ARRAY and new_data[field].size() == 3:
 			var arr: Array = new_data[field]

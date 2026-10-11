@@ -527,6 +527,29 @@ static func replace_expr_constants(s: String) -> String:
 			i += 1
 	return out
 
+# 表达式归一化：全角符号转半角、去掉 y=/y~/y: 前缀、^ 转 **、替换 pi/tau
+# 注意：不做任何字符或名称白名单过滤，不丢弃任何字符
+static func build_expr_clean(expr_str: String) -> String:
+	var s = expr_str.strip_edges().replace("～", "~").replace("：", ":")
+	if s.begins_with("y=") or s.begins_with("y~") or s.begins_with("y:"):
+		s = s.substr(2)
+	s = s.replace("^", "**")
+	return replace_expr_constants(s)
+
+# 表达式合法性校验：合法返回空串，非法返回错误说明文本
+static func validate_expression(expr_str: String) -> String:
+	var s = expr_str.strip_edges()
+	if s.is_empty():
+		return ""
+	if s.replace(" ", "").to_lower() == "linear":
+		return ""
+	if not (s.begins_with("y=") or s.begins_with("y~") or s.begins_with("y:")):
+		return ""
+	var ex = Expression.new()
+	if ex.parse(build_expr_clean(s), ["x"]) != OK:
+		return "表达式无法解析：" + ex.get_error_text()
+	return ""
+
 # ========== BPM 缓存工具（静态函数，所有文件共享） ==========
 # 构建 BPM 分段缓存：返回有序数组，每段包含 {start_beat, start_time, bpm, end_beat, end_time}
 static func build_bpm_cache(bpm_list: Array, offset_ms: int) -> Array:

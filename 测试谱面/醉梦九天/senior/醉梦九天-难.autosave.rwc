@@ -8503,6 +8503,43 @@
 				}
 			],
 			"textures": []
+		},
+		{
+			"Group": 1,
+			"Name": "新判定线",
+			"eventLayers": [
+				{
+					"alphaEvents": [],
+					"moveXEvents": [],
+					"moveYEvents": [
+						{
+							"_effect_type": 1,
+							"_is_continuous": true,
+							"end": 0.0,
+							"endTime": [
+								0.0,
+								1.0,
+								2
+							],
+							"isContinuous": 1,
+							"start": 0.0,
+							"startTime": [
+								0.0,
+								0.0,
+								1
+							],
+							"type": "Linear"
+						}
+					],
+					"moveZEvents": [],
+					"rotateXEvents": [],
+					"rotateYEvents": [],
+					"rotateZEvents": [],
+					"speedEvents": []
+				}
+			],
+			"notes": [],
+			"textures": []
 		}
 	]
 }

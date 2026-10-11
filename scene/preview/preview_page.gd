@@ -467,34 +467,6 @@ func beat_to_time(beat: float) -> float:
 func time_to_beat(time_sec: float) -> float:
 	return Global.cached_time_to_beat(bpm_cache, time_sec)
 
-# 将 y= / y~ 表达式字符串清洗为可直接 parse 的形式：x 保留为变量名（作为 execute 入参），
-# 运行期只需 execute([x])，避免每帧每音符重新拼字符串 + parse
-static func _build_expr_clean(expr_str: String) -> String:
-	var s = expr_str.strip_edges().replace("～", "~").replace("：", ":")
-	if s.begins_with("y=") or s.begins_with("y~") or s.begins_with("y:"):
-		s = s.substr(2)
-	s = s.replace("^", "**")
-	var func_names = ["sin", "cos", "tan", "abs", "sqrt", "log", "exp", "floor", "ceil", "round", "min", "max", "pi"]
-	var clean = ""
-	var i = 0
-	while i < s.length():
-		var matched = false
-		for fn in func_names:
-			if s.substr(i, fn.length()) == fn:
-				clean += fn
-				i += fn.length()
-				matched = true
-				break
-		if not matched:
-			var c = s[i]
-			if c == "x":
-				clean += "x"
-			elif c in "0123456789+-*/().eE " or c == "*":
-				clean += c
-			i += 1
-	# pi/tau 不是 Expression 内置常量，替换为数值字面量
-	return Global.replace_expr_constants(clean)
-
 # 求值缓存表达式：build 时已预解析（_expr），运行期只执行不重新 parse
 func _eval_cached_expression(ev: Dictionary, x_val: float) -> float:
 	var expression = ev.get("_expr")
@@ -502,6 +474,8 @@ func _eval_cached_expression(ev: Dictionary, x_val: float) -> float:
 		return 0.0
 	var result = expression.execute([x_val], null, false)
 	if expression.has_execute_failed() or result == null:
+		return 0.0
+	if typeof(result) != TYPE_FLOAT and typeof(result) != TYPE_INT:
 		return 0.0
 	return float(result)
 
@@ -517,7 +491,7 @@ func _annotate_event_times(events: Array) -> void:
 		if ev_type.begins_with("y=") or ev_type.begins_with("y~") or ev_type.begins_with("y:"):
 			# 预解析 y= / y~ / y: 表达式（x 为输入变量），避免每帧每音符重新 parse
 			var expression = Expression.new()
-			if expression.parse(_build_expr_clean(ev_type), ["x"]) == OK:
+			if expression.parse(Global.build_expr_clean(ev_type), ["x"]) == OK:
 				ev["_expr"] = expression
 				if ev_type.begins_with("y~"):
 					_annotate_shape_bounds(ev)
